@@ -1,0 +1,76 @@
+{
+  "name": "Brunch — WF3 Book Table",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "workflowInputs",
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "restaurant_id",
+              "type": "string"
+            },
+            {
+              "name": "date",
+              "type": "string"
+            },
+            {
+              "name": "time",
+              "type": "string"
+            },
+            {
+              "name": "party_size",
+              "type": "number"
+            }
+          ]
+        }
+      },
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        300
+      ],
+      "id": "a35ba81b-32e4-42cf-b809-d2c7de1a8252"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Deterministic booking against the mock restaurant data. No LLM.\nconst RESTAURANTS = [{\"id\": \"r1\", \"name\": \"Sunny Side Cafe\", \"cuisine\": \"American brunch\", \"neighborhood\": \"Downtown\", \"menu\": [{\"name\": \"Classic Eggs Benedict\", \"tags\": [\"dairy\"]}, {\"name\": \"Buttermilk Pancakes\", \"tags\": [\"vegetarian\", \"dairy\", \"gluten\"]}, {\"name\": \"Avocado Toast (GF bread available)\", \"tags\": [\"vegetarian\", \"vegan\", \"gluten-free-option\"]}, {\"name\": \"Veggie Omelette\", \"tags\": [\"vegetarian\", \"gluten-free\", \"dairy-optional\"]}, {\"name\": \"Fruit Bowl\", \"tags\": [\"vegetarian\", \"vegan\", \"gluten-free\"]}], \"slots\": {\"10:00\": 6, \"11:00\": 4, \"12:00\": 2}}, {\"id\": \"r2\", \"name\": \"Taco Tuesday (Open Sundays)\", \"cuisine\": \"Mexican\", \"neighborhood\": \"Mission\", \"menu\": [{\"name\": \"Chilaquiles\", \"tags\": [\"vegetarian\", \"dairy\", \"gluten-free\"]}, {\"name\": \"Breakfast Burrito\", \"tags\": [\"gluten\", \"dairy\"]}, {\"name\": \"Carnitas Tacos (corn tortilla)\", \"tags\": [\"gluten-free\"]}, {\"name\": \"Black Bean Tacos (corn tortilla)\", \"tags\": [\"vegetarian\", \"vegan\", \"gluten-free\"]}], \"slots\": {\"10:30\": 8, \"11:30\": 8}}, {\"id\": \"r3\", \"name\": \"The Green Fork\", \"cuisine\": \"Plant-based\", \"neighborhood\": \"Riverside\", \"menu\": [{\"name\": \"Tofu Scramble\", \"tags\": [\"vegetarian\", \"vegan\", \"gluten-free\"]}, {\"name\": \"Buckwheat Waffles\", \"tags\": [\"vegetarian\", \"vegan\", \"gluten-free\"]}, {\"name\": \"Cashew Cheese Bagel\", \"tags\": [\"vegetarian\", \"vegan\", \"gluten\"]}, {\"name\": \"Smoothie Bowl\", \"tags\": [\"vegetarian\", \"vegan\", \"gluten-free\"]}], \"slots\": {\"10:00\": 4, \"11:00\": 4, \"12:00\": 4}}, {\"id\": \"r4\", \"name\": \"Le Petit Croissant\", \"cuisine\": \"French bakery\", \"neighborhood\": \"Old Town\", \"menu\": [{\"name\": \"Croque Madame\", \"tags\": [\"gluten\", \"dairy\"]}, {\"name\": \"Butter Croissant\", \"tags\": [\"vegetarian\", \"gluten\", \"dairy\"]}, {\"name\": \"Quiche Lorraine\", \"tags\": [\"gluten\", \"dairy\"]}, {\"name\": \"Cafe au Lait\", \"tags\": [\"vegetarian\", \"dairy\"]}], \"slots\": {\"09:30\": 3, \"10:30\": 3}}, {\"id\": \"r5\", \"name\": \"Harbor Grill\", \"cuisine\": \"Seafood\", \"neighborhood\": \"Waterfront\", \"menu\": [{\"name\": \"Smoked Salmon Plate\", \"tags\": [\"gluten-free\", \"dairy-optional\"]}, {\"name\": \"Crab Cake Benedict\", \"tags\": [\"gluten\", \"dairy\"]}, {\"name\": \"Grilled Veggie Plate\", \"tags\": [\"vegetarian\", \"vegan\", \"gluten-free\"]}, {\"name\": \"Shrimp & Grits\", \"tags\": [\"gluten-free\", \"dairy\"]}], \"slots\": {\"11:00\": 5, \"12:00\": 5, \"13:00\": 5}}];\nconst st = $getWorkflowStaticData('global');\nst.booked = st.booked || {};      // \"restaurant|date|time\" -> seats taken\nst.bookings = st.bookings || [];\n\nconst { restaurant_id, date, time, party_size } = $input.first().json;\nconst size = Number(party_size);\nconst r = RESTAURANTS.find(x => x.id === restaurant_id);\nif (!r) return [{ json: { error: `Unknown restaurant_id ${restaurant_id}` } }];\nif (!(time in r.slots)) return [{ json: { error: `${r.name} has no ${time} slot on ${date}` } }];\n\nconst key = `${restaurant_id}|${date}|${time}`;\nconst remaining = r.slots[time] - (st.booked[key] || 0);\nif (remaining < size) return [{ json: { error: `Only ${remaining} seats left at ${r.name} ${date} ${time}` } }];\n\nst.booked[key] = (st.booked[key] || 0) + size;\nconst booking = {\n  confirmation_id: 'BR-' + Math.random().toString(16).slice(2, 8).toUpperCase(),\n  restaurant_id,\n  restaurant_name: r.name,\n  address: `${r.neighborhood} (mock address)`,\n  date, time, party_size: size,\n};\nst.bookings.push(booking);\nreturn [{ json: booking }];\n"
+      },
+      "name": "Book (capacity check)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        300
+      ],
+      "id": "689f168d-68d5-4bdb-8672-a10e49f86d19"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Book (capacity check)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "versionId": "7e82febe-1f0e-4746-b743-9aa471852d36",
+  "id": "M7QcuK8qlHkEj0GH",
+  "tags": [],
+  "meta": {
+    "instanceId": "",
+    "templateCredsSetupCompleted": false
+  },
+  "active": false
+}

@@ -31,6 +31,7 @@ n8n workflows, importable as JSON.
 
 - [Email Responder](examples-n8n/example-email-responder/1_Email%20Responder.json)
 - [Email Responder — ReAct](examples-n8n/example-email-responder/2_Email%20Responder%20-%20ReAct.json)
+- [Brunch Planner — agentic workflow, 4 files](examples-n8n/example-brunch-planner/README.md)
 
 
 ## LoDA Products & Teams

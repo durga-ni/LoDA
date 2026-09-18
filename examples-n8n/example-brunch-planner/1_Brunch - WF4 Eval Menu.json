@@ -1,0 +1,162 @@
+{
+  "name": "Brunch — WF4 Eval Menu",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "workflowInputs",
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "menu",
+              "type": "array"
+            },
+            {
+              "name": "diners",
+              "type": "array"
+            }
+          ]
+        }
+      },
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        300
+      ],
+      "id": "6eaa595f-e9d7-4e9e-a8c0-2700c2c6ee0c"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ JSON.stringify({ menu: $json.menu, diners: $json.diners }, null, 2) }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "type": "SystemMessagePromptTemplate",
+              "message": "You evaluate whether a restaurant menu works for a group of people with\ndietary restrictions. Be strict about allergies (a dish tagged \"dairy\" is not\nsafe for a dairy allergy unless a \"dairy-optional\" variant exists) and generous\nwith preferences. For each person list the dishes they can eat and suggest one\nthey'd probably enjoy. Score 0-10: 10 means everyone has several good options;\n0 means someone has nothing safe to eat."
+            }
+          ]
+        }
+      },
+      "name": "Evaluate menu",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        400,
+        300
+      ],
+      "id": "e03b3907-01a9-44f5-814d-33705557a09d"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "id",
+          "value": "claude-opus-5"
+        },
+        "options": {}
+      },
+      "name": "Anthropic (eval)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        300,
+        520
+      ],
+      "id": "bb4d873d-d4eb-4ecd-9754-b897aa69c587",
+      "credentials": {
+        "anthropicApi": {
+          "id": "WXfJ9lSRkOyDaxmy",
+          "name": "Anthropic (brunch)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"score\": {\n      \"type\": \"integer\",\n      \"description\": \"0 to 10\"\n    },\n    \"summary\": {\n      \"type\": \"string\"\n    },\n    \"per_person\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"name\": {\n            \"type\": \"string\"\n          },\n          \"can_eat\": {\n            \"type\": \"array\",\n            \"items\": {\n              \"type\": \"string\"\n            }\n          },\n          \"suggestion\": {\n            \"type\": \"string\"\n          }\n        },\n        \"required\": [\n          \"name\",\n          \"can_eat\",\n          \"suggestion\"\n        ],\n        \"additionalProperties\": false\n      }\n    },\n    \"blockers\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      },\n      \"description\": \"People who have nothing safe to eat, and why\"\n    }\n  },\n  \"required\": [\n    \"score\",\n    \"summary\",\n    \"per_person\",\n    \"blockers\"\n  ],\n  \"additionalProperties\": false\n}"
+      },
+      "name": "Eval schema",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        560,
+        520
+      ],
+      "id": "b4e94834-9a11-4b7b-897b-3f0a0df592e5"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: $input.first().json.output }];"
+      },
+      "name": "Return result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ],
+      "id": "d0838374-6bae-419f-bf12-2c436c910abc"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Evaluate menu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic (eval)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Evaluate menu",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Eval schema": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Evaluate menu",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate menu": {
+      "main": [
+        [
+          {
+            "node": "Return result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "versionId": "b4fd9ec9-cce4-4836-b45c-134645e37aab",
+  "id": "GGJr5YPFLUc8sLY7",
+  "tags": [],
+  "meta": {
+    "instanceId": "",
+    "templateCredsSetupCompleted": false
+  },
+  "active": false
+}
