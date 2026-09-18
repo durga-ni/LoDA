@@ -77,7 +77,7 @@
         "operation": "sendAndWait",
         "sendTo": "sahil.renapurkar.official@gmail.com",
         "subject": "Approval Required",
-        "message": "=<h3>📋 Meeting Request Review</h3>\n\n<p><b>From:</b> {{ $json.sender }}</p>\n<p><b>Topic:</b> {{ $json.topic || \"Not specified\" }}</p>\n<p><b>Proposed Slot:</b> {{ $json.proposed_date }} {{ $json.proposed_time }} ({{ $json.duration_minutes }} min)</p>\n<p><b>Urgency:</b> {{ $json.urgency }}</p>\n<p><b>Decision:</b> {{ $json.decision }}</p>\n\n<hr>\n\n<p><b>Draft Reply:</b><br>{{ $json.draft_response }}</p>\n\n<hr>\n\n<p>All required info is present. Approve to block the calendar.</p>",
+        "message": "=<h3>📋 Meeting Request Review</h3>\n\n<p><b>From:</b> {{ $json.sender }}</p>\n<p><b>Topic:</b> {{ $json.topic || \"Not specified\" }}</p>\n<p><b>Proposed Slot:</b> {{ $json.proposed_date }} {{ $json.proposed_time }} ({{ $json.duration_minutes }} min)</p>\n<p><b>Urgency:</b> {{ $json.urgency }}</p>\n<p><b>Decision:</b> {{ $json.decision }}</p>\n\n<hr>\n\n<p><b>Draft Reply:</b><br>{{ $json.draft_response }}</p>\n\n<hr>\n\n<p>All required info is present. Approve to block the calendar.</p>\n\n<hr>\n\n<p style=\"color:#666;font-size:12px;margin-bottom:4px\"><b>How the agent reasoned</b> (chain-of-thought, {{ $json.reasoning_steps.length }} steps)</p>\n<ol style=\"color:#666;font-size:12px;line-height:1.6\">{{ $json.reasoning_steps.map(s => '<li>' + s + '</li>').join('') }}</ol>",
         "approvalOptions": {
           "values": {
             "approvalType": "double"
