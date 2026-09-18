@@ -1,0 +1,269 @@
+{
+  "name": "Email Responder",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1200,
+        208
+      ],
+      "id": "f9534410-f205-4d7d-a51d-e17a19cade37",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 1,
+        "filters": {
+          "readStatus": "unread"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -992,
+        208
+      ],
+      "id": "49e1c2bd-1c55-49bc-8340-524b85b1d518",
+      "name": "Get many messages",
+      "webhookId": "2aa48df9-9040-4ed5-bdc6-7897ee009afc",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "5O6syliqdbd97cVh",
+          "name": "Gmail account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "=define",
+        "text": "=# Role\nYou are a meeting email response assistant. You read incoming emails\nrequesting meetings and produce a structured triage + draft response\nfor the recipient.\n\n# Task\nGiven an incoming email, extract who is asking, what the meeting is\nabout, when they propose, assess urgency, decide on\naccept/decline/propose alternative/need more info, flag anything\nmissing, and draft a reply.\n\n# Rules\n- Working hours: Monday–Friday, 9:00–17:00 CET. Never accept a\n  meeting outside these hours. If proposed time is outside working\n  hours, decline that slot and propose the nearest available slot\n  within working hours.\n- If no time is proposed by the sender, do NOT pick a time yourself.\n  Set decision to \"need_more_info\" and add \"proposed time\" to\n  missing_info.\n- If no topic is stated or clearly implied, do NOT invent one. Set\n  decision to \"need_more_info\" and add \"meeting topic\" to\n  missing_info.\n- Urgency reflects business impact as stated (deadline, blocker,\n  client-facing), not the tone of the message. A friendly \"whenever\n  works!\" is low. A polite \"we need this before Friday's board\n  meeting\" is high.\n- Routine check-ins and recurring syncs are never \"high\" urgency\n  unless the sender explicitly says otherwise.\n- Draft response tone: professional, concise, no more than 4\n  sentences.\n\n# Examples\n\n## Example 1 — clean input\nEmail: \"Hi, can we do a 30-min call Thursday at 3pm CET to review the\nQ3 budget? Need to finalize numbers before the board meeting Friday.\n— Sarah\"\n\nOutput:\n{\n  \"sender\": \"Sarah\",\n  \"topic\": \"Q3 budget review\",\n  \"proposed_time\": \"Thursday 3:00 PM CET\",\n  \"urgency\": \"high\",\n  \"decision\": \"accept\",\n  \"missing_info\": [],\n  \"draft_response\": \"Hi Sarah, Thursday at 3:00 PM CET works. I'll\n  send a calendar invite for 30 minutes. See you then.\",\n  \"event_start\": \"2026-09-24T15:00:00+02:00\",\n  \"event_end\": \"2026-09-24T15:30:00+02:00\"\n}\n\n## Example 2 — missing time\nEmail: \"Hey, we need to meet about the onboarding delays. Sometime\nthis week if possible. — James\"\n\nOutput:\n{\n  \"sender\": \"James\",\n  \"topic\": \"Onboarding delays\",\n  \"proposed_time\": null,\n  \"urgency\": \"medium\",\n  \"decision\": \"need_more_info\",\n  \"missing_info\": [\"proposed time — sender didn't specify a slot\"],\n  \"draft_response\": \"Hi James, happy to discuss the onboarding\n  delays. Could you suggest a couple of time slots that work for\n  you this week? My availability is Mon–Fri, 9–5 CET.\",\n  \"event_start\": null,\n  \"event_end\": null\n}\n\n## Example 3 — outside working hours (the \"gap\" rule)\nEmail: \"Can we jump on a call Saturday morning to sort out the\ndeployment issue? — Priya\"\n\nOutput:\n{\n  \"sender\": \"Priya\",\n  \"topic\": \"Deployment issue\",\n  \"proposed_time\": \"Saturday morning\",\n  \"urgency\": \"medium\",\n  \"decision\": \"propose_alternative\",\n  \"missing_info\": [\n    \"Saturday is outside working hours (Mon–Fri, 9–17 CET) — proposed\n    nearest alternative within working hours instead\"\n  ],\n  \"draft_response\": \"Hi Priya, I'm not available on Saturday.\n  Could we do Friday afternoon or Monday morning instead?\n  Happy to prioritise this.\",\n  \"event_start\": null,\n  \"event_end\": null\n}\n\n# Output format\nReturn ONLY a single valid JSON object matching the shape shown in\nthe examples above. Do not include any text, labels, or explanation\nbefore or after the JSON. EVENT_START and EVENT_END are never\nseparate lines outside the object — they are fields named\n\"event_start\" and \"event_end\", inside the JSON, in ISO 8601 format\n(e.g. \"2026-09-24T15:00:00+02:00\"). If decision is not \"accept\",\nset event_start and event_end to null.\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -784,
+        208
+      ],
+      "id": "5d685609-87da-40f4-b98e-3407994d9779",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -928,
+        416
+      ],
+      "id": "7221d1fa-a541-464f-964e-15046af3d9e1",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "79Cl4GOHcIf4YTte",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "sendTo": "durga@nextiteration.io",
+        "subject": "Approval Required",
+        "message": "=<h3>📋 Meeting Request Review</h3>\n\n<p><b>From:</b> {{ $json.sender }}</p>\n<p><b>Topic:</b> {{ $json.topic || \"Not specified\" }}</p>\n<p><b>Proposed Time:</b> {{ $json.proposed_time || \"Not specified\" }}</p>\n<p><b>Urgency:</b> {{ $json.urgency }}</p>\n<p><b>Decision:</b> {{ $json.decision }}</p>\n\n<p><b>Missing Info:</b></p>\n<ul>\n{{ $json.missing_info && $json.missing_info.length ? $json.missing_info.map(i => \"<li>\" + i + \"</li>\").join(\"\") : \"<li>None</li>\" }}\n</ul>\n\n<hr>\n\n<p><b>Draft Reply:</b><br>{{ $json.draft_response }}</p>\n\n<hr>\n\n<p>Please review and approve or reject below.</p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -288,
+        208
+      ],
+      "id": "f3eb7434-f5e2-4de2-99b3-fb4f2b315113",
+      "name": "Send a message",
+      "webhookId": "9d2e8060-45f7-4c74-a44f-96f0cfdb0943",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "5O6syliqdbd97cVh",
+          "name": "Gmail account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "fb977aa4-36f4-423f-a3e1-e10169a85264",
+              "leftValue": "={{ $json.data.approved }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -16,
+        208
+      ],
+      "id": "8655ee0c-0fb8-4b9b-88eb-85febaaed6ad",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "durga@nextiteration.io",
+          "mode": "list",
+          "cachedResultName": "durga@nextiteration.io"
+        },
+        "start": "={{ $('AI Agent').item.json.output.match(/EVENT_START:\\s*(\\S+)/)[1] }}",
+        "end": "={{ $('AI Agent').item.json.output.match(/EVENT_END:\\s*(\\S+)/)[1] }}",
+        "additionalFields": {
+          "attendees": [
+            "={{ $('Get many messages').item.json.From.match(/<([^>]+)>/)[1] }}"
+          ],
+          "summary": "={{ $('Get many messages').item.json.Subject }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        192,
+        160
+      ],
+      "id": "1f22bdf5-857b-49dd-9708-c49577c4cdc8",
+      "name": "Create an event",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "yBIfxQp4nBCKKodX",
+          "name": "Google Calendar account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.item.json.output;\n\nlet parsed;\ntry {\n  const cleaned = raw.replace(/```json\\n?|```/g, '').trim();\n  parsed = JSON.parse(cleaned);\n} catch (e) {\n  parsed = {\n    sender: \"unknown\",\n    topic: null,\n    proposed_time: null,\n    urgency: \"medium\",\n    decision: \"need_more_info\",\n    missing_info: [\"Could not parse AI response: \" + e.message],\n    draft_response: null,\n    event_start: null,\n    event_end: null\n  };\n}\n\nreturn { json: parsed };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -496,
+        208
+      ],
+      "id": "d152b75b-22b6-4e6d-b5e6-fcf93d37575d",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get many messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many messages": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Create an event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "d4222313-a85d-48f5-92cf-ee4fb8761d75",
+  "meta": {
+    "instanceId": "28567420f64490b8374f574a6d58885f7ee5010134dcb9f9e8baedc930910f55"
+  },
+  "id": "miQd29nVPBY4rg42",
+  "tags": []
+}
