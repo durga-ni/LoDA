@@ -1,0 +1,689 @@
+{
+  "name": "Email Responder - CoT + ReAct",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2208,
+        272
+      ],
+      "id": "d47abe3c-ba95-4756-be80-aba1f34ae546",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 1,
+        "simple": false,
+        "filters": {
+          "readStatus": "unread"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -2000,
+        272
+      ],
+      "id": "780d1488-841b-40d5-964a-2ff078e7094d",
+      "name": "Get many messages",
+      "webhookId": "2aa48df9-9040-4ed5-bdc6-7897ee009afc",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "AFlBJZWMdmAPyHw7",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "=define",
+        "text": "=# Role\nYou are a meeting email response assistant. You read one incoming email\nrequesting a meeting and produce a structured triage + draft response.\n\n# Context\nToday is {{ $now.setZone('Europe/Berlin').toFormat('cccc, yyyy-MM-dd') }} (CET).\nResolve relative dates (\"tomorrow\", \"this Friday\") against this date.\n\n# Incoming email\nFrom: {{ $json.from?.text || $json.From }}\nSubject: {{ $json.subject || $json.Subject }}\n\n{{ $json.text || $json.snippet }}\n\n# Rules\n- Working hours: Monday-Friday, 09:00-17:00 CET. Never accept a meeting\n  outside these hours.\n- FOUR fields are REQUIRED before a calendar event can be created:\n    1. topic\n    2. date        (a specific calendar date)\n    3. start time  (a specific clock time - \"tomorrow\", \"mornings\",\n                    \"this week\" are NOT start times)\n    4. duration    (in minutes)\n  If ANY of them is missing: decision = \"need_more_info\", list the exact\n  missing field(s) in missing_info, and ask the sender for them.\n- NEVER invent a missing field. Never pick a slot on the sender's behalf.\n- This workflow has NO memory between runs. The only context you get is\n  the email text above. It may contain a quoted earlier thread - read it.\n  A field supplied earlier in that thread counts as supplied.\n- If the message is a short fragment (\"2pm works\", \"Friday\", \"yes\") with\n  NO quoted thread, you cannot recover the topic. Do not guess it. Treat\n  the missing required fields as missing and ask again, including the\n  topic.\n- Loop guard: if the quoted thread shows you have already asked for the\n  same field twice and it still has not been given, stop asking. Propose\n  two concrete slots inside working hours and set decision to\n  \"propose_alternative\".\n- Urgency reflects stated business impact (deadline, blocker, client\n  pressure), not tone.\n- urgency is NEVER a blocking field. It never goes into missing_info and\n  never on its own causes decision = \"need_more_info\". A request that has\n  all four required fields is bookable at any urgency.\n- Ride-along question: if you are already replying because a REQUIRED\n  field is missing, AND the email carries no urgency signal at all (no\n  deadline, no blocker, no client pressure, no stated priority), then\n  also ask how time-sensitive it is in the same reply. One round trip,\n  two questions. If the email DOES carry an urgency signal, do not ask -\n  asking about something the sender already told you is annoying.\n- draft_response: professional, concise, max 4 sentences. When decision\n  is \"need_more_info\" it asks for exactly the fields listed in\n  missing_info, plus the ride-along urgency question when the rule above\n  applies - nothing else.\n\n# Reasoning - do this BEFORE you answer\nFill reasoning_steps with one string per step, in order:\nStep 0 - Is this a fresh request, or a reply inside an existing thread?\n         If quoted text is present, merge the quoted content with the new\n         message and evaluate Steps 2-5 against the merged whole. Say\n         which fields came from the quote and which are new.\nStep 1 - Who is the sender?\nStep 2 - What is the topic? Present or missing?\nStep 3 - Is a specific DATE given? Resolve relative dates against today.\nStep 4 - Is a specific START TIME given? A day or a vague preference is NOT a start time.\nStep 5 - Is DURATION given?\nStep 6 - If date AND start time exist, is the slot inside Mon-Fri 09:00-17:00 CET?\nStep 7 - What is the urgency, and which words in the email prove it? If no words prove it, urgency = \"medium\" and the ride-along question applies.\nStep 8 - Which required fields are still missing, and therefore what is the decision?\n\n# Output format\nReturn ONLY one valid JSON object. No text before or after it. No markdown fences.\n\n{\n  \"reasoning_steps\": string[],\n  \"sender\": string,\n  \"topic\": string | null,\n  \"proposed_date\": string | null,\n  \"proposed_time\": string | null,\n  \"duration_minutes\": number | null,\n  \"urgency\": \"low\" | \"medium\" | \"high\",\n  \"decision\": \"accept\" | \"decline\" | \"propose_alternative\" | \"need_more_info\",\n  \"missing_info\": string[],\n  \"draft_response\": string,\n  \"event_start\": string | null,\n  \"event_end\": string | null\n}\n\nevent_start / event_end are ISO 8601 with offset\n(e.g. \"2026-09-19T14:00:00+02:00\") and are null unless decision is \"accept\".\nmissing_info must be empty if and only if decision is \"accept\".\n\n# Examples\n\n## Example A - a required field is missing (today = Thursday 2026-09-18)\nEmail: \"Hi team, we need to discuss the data migration timeline - the client\nis pushing for completion by end of month and I'm worried we're behind.\nCan we find 1 hour tomorrow? - Naga\"\n\n{\n  \"reasoning_steps\": [\n    \"Step 0 - Fresh request, no quoted thread.\",\n    \"Step 1 - Sender: Naga Durga.\",\n    \"Step 2 - Topic: data migration timeline. Present.\",\n    \"Step 3 - Date: 'tomorrow' resolves to Friday 2026-09-19. Present.\",\n    \"Step 4 - Start time: NOT given. A day is not a clock time.\",\n    \"Step 5 - Duration: 60 minutes. Present.\",\n    \"Step 6 - Cannot check working hours without a start time.\",\n    \"Step 7 - Urgency high: 'client is pushing for completion by end of month' + 'worried we're behind'.\",\n    \"Step 8 - Missing: start time. Decision = need_more_info. Ask the sender, do not guess.\"\n  ],\n  \"sender\": \"Naga Durga\",\n  \"topic\": \"Data migration timeline\",\n  \"proposed_date\": \"2026-09-19\",\n  \"proposed_time\": null,\n  \"duration_minutes\": 60,\n  \"urgency\": \"high\",\n  \"decision\": \"need_more_info\",\n  \"missing_info\": [\"start time on Friday 2026-09-19\"],\n  \"draft_response\": \"Hi Naga, agreed - let's get ahead of the client deadline. Tomorrow works for me. What start time suits you? I'm free 09:00-17:00 CET and will block 1 hour.\",\n  \"event_start\": null,\n  \"event_end\": null\n}\n\n## Example B - the sender replies, nothing is missing any more\nEmail: \"2pm works.\n\n> Hi team, we need to discuss the data migration timeline - the client is\n> pushing for completion by end of month. Can we find 1 hour tomorrow? - Naga\"\n\n{\n  \"reasoning_steps\": [\n    \"Step 0 - Reply inside an existing thread. Quoted text present - merging. Topic, date and duration come from the quote; the start time is new.\",\n    \"Step 1 - Sender: Naga Durga.\",\n    \"Step 2 - Topic: data migration timeline, taken from the quoted thread. Present.\",\n    \"Step 3 - Date: Friday 2026-09-19, from the quoted thread. Present.\",\n    \"Step 4 - Start time: 14:00 CET. Present.\",\n    \"Step 5 - Duration: 60 minutes, from the quoted thread. Present.\",\n    \"Step 6 - 14:00-15:00 on a Friday is inside Mon-Fri 09:00-17:00 CET. Pass.\",\n    \"Step 7 - Urgency high, unchanged: client end-of-month deadline.\",\n    \"Step 8 - Nothing missing. Decision = accept.\"\n  ],\n  \"sender\": \"Naga Durga\",\n  \"topic\": \"Data migration timeline\",\n  \"proposed_date\": \"2026-09-19\",\n  \"proposed_time\": \"14:00 CET\",\n  \"duration_minutes\": 60,\n  \"urgency\": \"high\",\n  \"decision\": \"accept\",\n  \"missing_info\": [],\n  \"draft_response\": \"Hi Naga, 2:00 PM CET tomorrow works. I'll send a 1-hour invite. See you then.\",\n  \"event_start\": \"2026-09-19T14:00:00+02:00\",\n  \"event_end\": \"2026-09-19T15:00:00+02:00\"\n}\n\n## Example C - slot given but outside working hours\nEmail: \"Can we jump on a 30-min call Saturday morning at 10 about the deployment? - Priya\"\n\n{\n  \"reasoning_steps\": [\n    \"Step 0 - Fresh request, no quoted thread.\",\n    \"Step 1 - Sender: Priya.\",\n    \"Step 2 - Topic: deployment issue. Present.\",\n    \"Step 3 - Date: Saturday. Present.\",\n    \"Step 4 - Start time: 10:00. Present.\",\n    \"Step 5 - Duration: 30 minutes. Present.\",\n    \"Step 6 - Saturday is outside Mon-Fri 09:00-17:00 CET. FAIL - cannot accept this slot.\",\n    \"Step 7 - Urgency medium: deployment issue, no deadline stated.\",\n    \"Step 8 - Nothing is missing, but the slot is not bookable. Decision = propose_alternative.\"\n  ],\n  \"sender\": \"Priya\",\n  \"topic\": \"Deployment issue\",\n  \"proposed_date\": \"Saturday\",\n  \"proposed_time\": \"10:00\",\n  \"duration_minutes\": 30,\n  \"urgency\": \"medium\",\n  \"decision\": \"propose_alternative\",\n  \"missing_info\": [\"a slot inside working hours - Saturday is outside Mon-Fri 09:00-17:00 CET\"],\n  \"draft_response\": \"Hi Priya, I'm not available on Saturday. Could we do Friday at 16:00 or Monday at 09:30 CET instead? Happy to prioritise this.\",\n  \"event_start\": null,\n  \"event_end\": null\n}\n\n## Example D - required field missing AND no urgency signal (ride-along)\nEmail: \"Hi, can we get 30 minutes on the new vendor onboarding process? - Meera\"\n\n{\n  \"reasoning_steps\": [\n    \"Step 0 - Fresh request, no quoted thread.\",\n    \"Step 1 - Sender: Meera.\",\n    \"Step 2 - Topic: new vendor onboarding process. Present.\",\n    \"Step 3 - Date: NOT given.\",\n    \"Step 4 - Start time: NOT given.\",\n    \"Step 5 - Duration: 30 minutes. Present.\",\n    \"Step 6 - Cannot check working hours without a date or start time.\",\n    \"Step 7 - No urgency signal at all: no deadline, no client, no blocker. Default to medium, and the ride-along question applies because I am already replying.\",\n    \"Step 8 - Missing: date and start time. Decision = need_more_info. Ask for both, and ride along with the urgency question.\"\n  ],\n  \"sender\": \"Meera\",\n  \"topic\": \"New vendor onboarding process\",\n  \"proposed_date\": null,\n  \"proposed_time\": null,\n  \"duration_minutes\": 30,\n  \"urgency\": \"medium\",\n  \"decision\": \"need_more_info\",\n  \"missing_info\": [\"meeting date\", \"start time\"],\n  \"draft_response\": \"Hi Meera, happy to walk through the new vendor onboarding process. Which day and start time suit you? I'm free Mon-Fri 09:00-17:00 CET and will block 30 minutes. Also, how time-sensitive is this?\",\n  \"event_start\": null,\n  \"event_end\": null\n}\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -1792,
+        272
+      ],
+      "id": "90c78106-5a75-43b6-b288-0a7ecb098237",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -1936,
+        496
+      ],
+      "id": "18f77781-6b1e-492d-b4e8-0953d2ab39a0",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "MJmu5iG6bJB5dd48",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "sendTo": "sahil.renapurkar.official@gmail.com",
+        "subject": "Approval Required",
+        "message": "=<h3>📋 Meeting Request Review</h3>\n\n<p><b>From:</b> {{ $json.sender }}</p>\n<p><b>Topic:</b> {{ $json.topic || \"Not specified\" }}</p>\n<p><b>Proposed Slot:</b> {{ $json.proposed_date }} {{ $json.proposed_time }} ({{ $json.duration_minutes }} min)</p>\n<p><b>Urgency:</b> {{ $json.urgency }}</p>\n<p><b>Decision:</b> {{ $json.decision }}</p>\n\n<hr>\n\n<p><b>Draft Reply:</b><br>{{ $json.draft_response }}</p>\n\n<hr>\n\n<p>All required info is present. Approve to block the calendar.</p>\n\n<hr>\n\n<p style=\"color:#666;font-size:12px;margin-bottom:4px\"><b>How the agent reasoned</b> (chain-of-thought, {{ $json.reasoning_steps.length }} steps)</p>\n<ol style=\"color:#666;font-size:12px;line-height:1.6\">{{ $json.reasoning_steps.map(s => '<li>' + s + '</li>').join('') }}</ol>",
+        "approvalOptions": {
+          "values": {
+            "approvalType": "double"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -1072,
+        144
+      ],
+      "id": "a0248c93-6304-4a4a-a6a2-22813684105b",
+      "name": "Send a message",
+      "webhookId": "9d2e8060-45f7-4c74-a44f-96f0cfdb0943",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "AFlBJZWMdmAPyHw7",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "fb977aa4-36f4-423f-a3e1-e10169a85264",
+              "leftValue": "={{ $json.data.approved }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -848,
+        144
+      ],
+      "id": "443d2c93-9097-4af9-8bd4-1200f476e061",
+      "name": "Approved?"
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "sahil.renapurkar.official@gmail.com",
+          "mode": "list",
+          "cachedResultName": "sahil.renapurkar.official@gmail.com"
+        },
+        "start": "={{ $('Code in JavaScript').item.json.event_start }}",
+        "end": "={{ $('Code in JavaScript').item.json.event_end }}",
+        "additionalFields": {
+          "attendees": [
+            "={{ $('Get many messages').item.json.from?.value?.[0]?.address || ($('Get many messages').item.json.From || '').match(/<([^>]+)>/)?.[1] || $('Get many messages').item.json.From }}"
+          ],
+          "summary": "={{ $('Code in JavaScript').item.json.topic }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        -624,
+        0
+      ],
+      "id": "410559a3-8e7d-458a-ba7b-22034726561f",
+      "name": "Create an event",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "pJgtB7CgBPqNtlvy",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.item.json.output;\n\nlet parsed;\ntry {\n  const cleaned = raw.replace(/```json\\n?|```/g, '').trim();\n  parsed = JSON.parse(cleaned);\n} catch (e) {\n  parsed = {\n    reasoning_steps: [\"Parse failed before any reasoning could be read.\"],\n    sender: \"unknown\",\n    topic: null,\n    proposed_date: null,\n    proposed_time: null,\n    duration_minutes: null,\n    urgency: \"medium\",\n    decision: \"need_more_info\",\n    missing_info: [\"Could not parse AI response: \" + e.message],\n    draft_response: null,\n    event_start: null,\n    event_end: null\n  };\n}\n\n// the completeness gate reads these two - never let them be undefined\nparsed.reasoning_steps = parsed.reasoning_steps || [];\nparsed.missing_info = parsed.missing_info || [];\n\n// stamped here so the no-reply check knows what 'new mail' means\nparsed.askedAt = new Date().toISOString();\n\nreturn { json: parsed };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1504,
+        272
+      ],
+      "id": "1a525104-e718-4375-91bb-1f702ce6addb",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "a1000000-0000-4000-8000-000000000001",
+              "leftValue": "={{ $json.missing_info.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "a1000000-0000-4000-8000-000000000002",
+              "leftValue": "={{ $json.decision }}",
+              "rightValue": "accept",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1296,
+        272
+      ],
+      "id": "917f92a1-2814-4d75-a627-62d9e313796f",
+      "name": "Info Complete?"
+    },
+    {
+      "parameters": {
+        "operation": "reply",
+        "messageId": "={{ $('Get many messages').item.json.id }}",
+        "emailType": "text",
+        "message": "={{ $json.draft_response }}\n\n--- original message ---\n{{ $('Get many messages').item.json.text || $('Get many messages').item.json.snippet }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -1072,
+        448
+      ],
+      "id": "527f350c-32b3-439e-a758-193b3d04f650",
+      "name": "Ask sender for missing info",
+      "webhookId": "b7f1c4d2-0a58-4a1e-9f63-1c2d3e4f5a6b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "AFlBJZWMdmAPyHw7",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "reply",
+        "messageId": "={{ $('Get many messages').item.json.id }}",
+        "emailType": "text",
+        "message": "={{ $('Code in JavaScript').item.json.draft_response }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -336,
+        0
+      ],
+      "id": "6f341436-a6e8-40fa-bc29-b985455e51d1",
+      "name": "Confirm to sender",
+      "webhookId": "d3a9f61c-2b47-4c8e-9d15-7e8f0a1b2c3d",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "AFlBJZWMdmAPyHw7",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -848,
+        448
+      ],
+      "id": "323e98ea-494e-4169-a564-427ae3ce819c",
+      "name": "Wait 2 minutes",
+      "webhookId": "adf8fe44-d627-42bd-8921-6a1dec1001fe"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 1,
+        "simple": false,
+        "filters": {
+          "sender": "={{ $('Get many messages').first().json.from?.value?.[0]?.address || ($('Get many messages').first().json.From || '').match(/<([^>]+)>/)?.[1] || $('Get many messages').first().json.From }}",
+          "receivedAfter": "={{ $('Code in JavaScript').first().json.askedAt }}"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -624,
+        448
+      ],
+      "id": "3c5d0df1-05a0-4767-bd9f-757779890ca3",
+      "name": "Check for reply",
+      "webhookId": "ac5cfdf3-e7b5-49fc-bb60-e58630878ae8",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "AFlBJZWMdmAPyHw7",
+          "name": "Gmail account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "49956ae0-62a7-46ed-a0d1-724344b6f50f",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -400,
+        448
+      ],
+      "id": "ce87a944-f16f-47c7-8d66-cbb3e856eb28",
+      "name": "Sender replied?"
+    },
+    {
+      "parameters": {
+        "promptType": "=define",
+        "text": "=# Role\nYou are a scheduling agent. The sender was asked for missing meeting details\nand did NOT reply within the grace period. You must now find the earliest slot\nthat works for BOTH calendars and book it yourself. Do not ask anyone anything.\n\n# Context\nNow is {{ $now.setZone('Europe/Berlin').toISO() }} (CET).\nMy calendar:     sahil.renapurkar.official@gmail.com\nSender calendar: {{ $('Get many messages').first().json.from?.value?.[0]?.address || ($('Get many messages').first().json.From || '').match(/<([^>]+)>/)?.[1] || $('Get many messages').first().json.From }}\nTopic:           {{ $('Code in JavaScript').first().json.topic || 'Meeting request' }}\nDuration:        {{ $('Code in JavaScript').first().json.duration_minutes || 30 }} minutes\n\n# Search rules\n- Only Monday-Friday, 09:00-17:00 CET.\n- Search the next 5 working days, starting from the next full hour from now.\n- A slot is valid only if BOTH calendars are free for the whole duration.\n- Take the EARLIEST valid slot. Do not optimise for anything else.\n- The meeting must end by 17:00 CET on its day.\n\n# How to work - ReAct loop\nWork in explicit Thought / Action / Observation cycles. Never skip straight to\nbooking.\n\nThought:      say what you need to know next and why.\nAction:       call ONE tool.\nObservation:  read what the tool returned, in your own words.\n...repeat...\nThen book, then answer.\n\nYou get only THREE tool calls. Do not waste them.\n1. Call check_availability ONCE for MY calendar, with time_min = now and\n   time_max = end of the 5th working day. One call, the whole range.\n2. Call check_availability ONCE for the SENDER calendar, same range.\n3. Now reason on paper, with no further tool calls. Merge both busy lists,\n   walk forward through Mon-Fri 09:00-17:00 CET, and name the first gap long\n   enough for the duration. Never call check_availability again to test a\n   candidate slot - you already have every busy block you need.\n4. Call book_meeting once, with that slot, in ISO 8601 with the +02:00 /\n   +01:00 CET offset.\n5. Only after book_meeting succeeds, give your final answer.\n\nIf a calendar comes back with no busy slots at all across the whole range,\nsay so in your reasoning - it means either a genuinely free week or that the\ncalendar is not shared with me. Treat it as free and continue.\n\n# Tools\n- check_availability: the list of BUSY slots on ONE calendar between two\n  timestamps. It does not tell you about the other person, and it does not\n  tell you whether a slot is good - it only lists what is taken. Call it\n  exactly twice in total: once for my calendar, once for the sender's, each\n  covering the full 5-working-day range.\n- book_meeting: creates the event and invites the sender. Call it exactly\n  once, and only when both calendars are confirmed free.\n\n# Final answer\nYour final answer must be ONLY the plain-text email body to send to the\nsender - no reasoning, no JSON, no markdown. Max 4 sentences. It must state\nthat no reply was received, that a slot was picked automatically, the exact\nday/date/time and duration in CET, and that they can reply to move it.\n",
+        "options": {
+          "maxIterations": 15
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -176,
+        528
+      ],
+      "id": "7ff87868-f851-4a84-af99-946dc1fead0f",
+      "name": "ReAct Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -304,
+        752
+      ],
+      "id": "7a6ed8ec-d9f6-40ef-975b-211036a71f92",
+      "name": "Gemini for ReAct",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "MJmu5iG6bJB5dd48",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Return the list of BUSY time slots on ONE calendar between two timestamps. The window can span several days - always ask for the whole search range at once, never day by day. Call once per person.",
+        "resource": "calendar",
+        "calendar": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $fromAI('calendar_email', 'Email address of the calendar to check - either my address or the sender address', 'string') }}"
+        },
+        "timeMin": "={{ $fromAI('time_min', 'Start of the WHOLE search range, ISO 8601 with CET offset', 'string') }}",
+        "timeMax": "={{ $fromAI('time_max', 'End of the WHOLE search range, ISO 8601 with CET offset', 'string') }}",
+        "options": {
+          "outputFormat": "bookedSlots"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        -96,
+        752
+      ],
+      "id": "8e51fe96-d89d-4783-b2bf-6d1c74c9b57c",
+      "name": "check_availability",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "pJgtB7CgBPqNtlvy",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Create the calendar event and invite the sender. Call this exactly once, only after both calendars are confirmed free for the whole slot.",
+        "calendar": {
+          "__rl": true,
+          "mode": "list",
+          "value": "sahil.renapurkar.official@gmail.com",
+          "cachedResultName": "sahil.renapurkar.official@gmail.com"
+        },
+        "start": "={{ $fromAI('event_start', 'Event start, ISO 8601 with CET offset', 'string') }}",
+        "end": "={{ $fromAI('event_end', 'Event end, ISO 8601 with CET offset', 'string') }}",
+        "additionalFields": {
+          "summary": "={{ $('Code in JavaScript').first().json.topic || 'Meeting request' }}",
+          "attendees": [
+            "={{ $('Get many messages').first().json.from?.value?.[0]?.address || ($('Get many messages').first().json.From || '').match(/<([^>]+)>/)?.[1] || $('Get many messages').first().json.From }}"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        80,
+        752
+      ],
+      "id": "6da97e1a-bc2f-45c6-bc6a-44758484b92e",
+      "name": "book_meeting",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "pJgtB7CgBPqNtlvy",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "reply",
+        "messageId": "={{ $('Get many messages').first().json.id }}",
+        "emailType": "text",
+        "message": "={{ $json.output }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        96,
+        528
+      ],
+      "id": "36e91bec-11d9-42b1-a084-082239b7b0e3",
+      "name": "Tell sender it is booked",
+      "webhookId": "506f7db0-93f0-4542-9370-aa9156bd98e4",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "AFlBJZWMdmAPyHw7",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get many messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many messages": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approved?": {
+      "main": [
+        [
+          {
+            "node": "Create an event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Info Complete?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Info Complete?": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ask sender for missing info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create an event": {
+      "main": [
+        [
+          {
+            "node": "Confirm to sender",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask sender for missing info": {
+      "main": [
+        [
+          {
+            "node": "Wait 2 minutes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 2 minutes": {
+      "main": [
+        [
+          {
+            "node": "Check for reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check for reply": {
+      "main": [
+        [
+          {
+            "node": "Sender replied?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sender replied?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "ReAct Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ReAct Agent": {
+      "main": [
+        [
+          {
+            "node": "Tell sender it is booked",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini for ReAct": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "ReAct Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check_availability": {
+      "ai_tool": [
+        [
+          {
+            "node": "ReAct Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "book_meeting": {
+      "ai_tool": [
+        [
+          {
+            "node": "ReAct Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "6d58c6a2-d2f3-41b3-82b4-f637ca65c17e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "28567420f64490b8374f574a6d58885f7ee5010134dcb9f9e8baedc930910f55"
+  },
+  "id": "VZKxXR21CFEauLTA",
+  "tags": []
+}
