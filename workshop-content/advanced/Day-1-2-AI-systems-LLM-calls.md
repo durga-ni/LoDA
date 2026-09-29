@@ -7,23 +7,25 @@
 
 ---
 
-## Agenda (2 days, 2×2hr sessions/day)
+## Agenda (2 days, 2×1.5hr sessions/day — 3hr/day, 6hr total)
+
+> **Revised from the original 2×2hr/day plan.** The cut is concentrated in Day 2 (Testing & Guardrails go from 4h to 3h); Day 1 loses time mainly by tightening pacing, not by dropping concepts. See the per-block notes below for exactly what was trimmed.
 
 ### Day 1
 
 | Time | Block |
 |---|---|
-| **Morning session (2h)** | |
-| 0:00–0:15 | 1. Why build a system, why not just chat? |
-| 0:15–0:30 | 2. System prompt vs user prompt |
-| 0:30–0:45 | 3. Scenario introduction — problem only, not the solution |
-| 0:45–1:30 | 4. Hands-on 1: write role, task, rules, output schema |
-| 1:30–1:45 | 5. Reveal: worked example + live demo ("delete the rule") |
-| 1:45–2:00 | Recap |
-| **Evening session (2h)** | |
-| 2:00–2:30 | 6. Four prompting techniques, one email, four outputs |
-| 2:30–3:45 | Hands-on 2: apply all 4 techniques to the same email |
-| 3:45–4:00 | Recap |
+| **Morning session (1.5h)** | |
+| 0:00–0:10 | 1. Why build a system, why not just chat? |
+| 0:10–0:25 | 2. System prompt vs user prompt |
+| 0:25–0:35 | 3. Scenario introduction — problem only, not the solution |
+| 0:35–1:10 | 4. Hands-on 1: write role, task, rules, output schema |
+| 1:10–1:25 | 5. Reveal: worked example + live demo ("delete the rule") |
+| 1:25–1:30 | Recap |
+| **Evening session (1.5h)** | |
+| 1:30–1:50 | 6. Four prompting techniques, one email, four outputs |
+| 1:50–2:55 | Hands-on 2: apply all 4 techniques to the same email |
+| 2:55–3:00 | Recap |
 
 ### Day 2
 
@@ -31,27 +33,27 @@
 
 | Time | Block |
 |---|---|
-| **Morning session (2h) — Test & Break** | |
-| 4:00–4:10 | Recap + pair swap (you will break another pair's prompt) |
-| 4:10–4:55 | Hands-on 3: test with 3 inputs — clean, ambiguous, gap |
-| 4:55–5:05 | Trainer break demo — one attack card, live on the projector |
-| 5:05–5:45 | Hands-on 4: break it — 5 supplied attack cards + recording sheet |
-| 5:45–6:00 | Report-back: one break per pair + recap |
-| **Evening session (2h) — Guardrails** | |
-| 6:00–6:20 | 7. Why guardrails matter (built from this morning's results) + common mistakes |
-| 6:20–6:35 | 8. Guardrails demo — before/after on the projector |
-| 6:35–7:20 | Hands-on 5: add the 5 guardrails to your own prompt |
-| 7:20–7:45 | Hands-on 6: re-run the same 5 attack cards — did it hold? |
-| 7:45–8:00 | Showcase (before/after) + final recap + close |
+| **Morning session (1.5h) — Test & Break** | |
+| 3:00–3:05 | Recap + pair swap (you will break another pair's prompt) |
+| 3:05–3:35 | Hands-on 3: test with 2 inputs — clean, gap (ambiguous input moved to optional/take-home) |
+| 3:35–3:40 | Trainer break demo — one attack card, live on the projector |
+| 3:40–4:15 | Hands-on 4: break it — 5 supplied attack cards + recording sheet (tighter per-card pacing) |
+| 4:15–4:30 | Report-back: one break per pair + recap |
+| **Evening session (1.5h) — Guardrails** | |
+| 4:30–4:45 | 7. Why guardrails matter (built from this morning's results) + common mistakes |
+| 4:45–4:55 | 8. Guardrails demo — before/after on the projector (2 demos, not 3) |
+| 4:55–5:25 | Hands-on 5: add the 5 guardrails to your own prompt (trainer leads G2/G5 as quick copy-in, pairs focus writing time on G1/G3/G4) |
+| 5:25–5:40 | Hands-on 6: re-run 3 of the 5 attack cards — did it hold? (Card 5 non-determinism check optional if time allows) |
+| 5:40–6:00 | Showcase (before/after) + final recap + close |
 
 ---
 ---
 
-# DAY 1 — MORNING (2h)
+# DAY 1 — MORNING (1.5h)
 
 ---
 
-## Block 1: Why build a system, not just chat? (0:00–0:15)
+## Block 1: Why build a system, not just chat? (0:00–0:10)
 
 ### Explain with this example
 
@@ -77,7 +79,7 @@ All three = yes → build a system.
 
 ---
 
-## Block 2: System prompt vs user prompt (0:15–0:30)
+## Block 2: System prompt vs user prompt (0:10–0:25)
 
 ### Explain with this example
 
@@ -123,7 +125,7 @@ Same system prompt handles both. That's the test.
 
 ---
 
-## Block 3: Scenario introduction — problem only (0:30–0:45)
+## Block 3: Scenario introduction — problem only (0:25–0:35)
 
 > Don't show the solution yet. Problem statement only.
 
@@ -147,15 +149,15 @@ Your working hours are Monday–Friday, 9:00–17:00 CET. You don't take meeting
 
 ---
 
-## Block 4: Hands-on 1 — Write role, task, rules, output schema (0:45–1:30)
+## Block 4: Hands-on 1 — Write role, task, rules, output schema (0:35–1:10)
 
 ### Setup (say to room)
 
 "In pairs. No few-shot examples yet — structure only."
 
-### What they build (45 min)
+### What they build (35 min)
 
-**Step 1 — Role & Task (15 min):**
+**Step 1 — Role & Task (10 min):**
 Write who this assistant is and what it does with each email.
 
 *Expected output shape:*
@@ -168,7 +170,7 @@ At minimum, cover:
 - How urgency should be judged
 - What tone the response should use
 
-**Step 3 — Output schema (15 min):**
+**Step 3 — Output schema (10 min):**
 The exact fields and allowed values.
 
 *Expected schema shape:*
@@ -194,7 +196,7 @@ Don't correct content — just check all 4 pieces exist. The reveal will surface
 
 ---
 
-## Block 5: Reveal — worked example + live demo (1:30–1:45)
+## Block 5: Reveal — worked example + live demo (1:10–1:25)
 
 ### Full system prompt (reference — the room keeps this)
 
@@ -317,18 +319,18 @@ set event_start and event_end to null.
 
 ---
 
-## Recap (1:45–2:00)
+## Recap (1:25–1:30)
 
 One sentence each: what would you change in your Hands-on 1 attempt now?
 
 ---
 ---
 
-# DAY 1 — EVENING (2h)
+# DAY 1 — EVENING (1.5h)
 
 ---
 
-## Block 6: Four prompting techniques (2:00–2:30)
+## Block 6: Four prompting techniques (1:30–1:50)
 
 ### Weather example first — quick intro (5 min)
 
@@ -1023,7 +1025,7 @@ Chaining trades **speed for precision**. 3 calls instead of 1. But each step is 
 
 ---
 
-## Hands-on 2: Apply all 4 techniques (2:30–3:45)
+## Hands-on 2: Apply all 4 techniques (1:50–2:55)
 
 ### Setup (say to room)
 
@@ -1038,25 +1040,25 @@ we're behind. Can we find 45 minutes sometime this week? I'm
 fairly flexible but mornings work best. — Rachel"
 ```
 
-### What each pair builds (75 min)
+### What each pair builds (65 min)
 
-**Technique 1 — Few-shot (15 min):**
+**Technique 1 — Few-shot (12 min):**
 Write 2 example email→output pairs, then run Rachel's email.
 
 *Expected outcome:* output follows the example pattern. Missing_info should flag "no specific time proposed."
 
-**Technique 2 — CoT (15 min):**
+**Technique 2 — CoT (12 min):**
 Add step-by-step reasoning instruction. Run same email.
 
 *Expected outcome:* model reasons through: sender = Rachel, topic = data migration, no specific time (just "this week, mornings"), urgency = high (client deadline, "worried we're behind"). Should flag missing specific slot.
 
-**Technique 3 — ReAct (15 min, talked through if no calendar API):**
+**Technique 3 — ReAct (13 min, talked through if no calendar API):**
 If Google Calendar is connected: attach it as tool, run email, agent checks availability.
 If not connected: write what the agent would check and when, describe the expected flow.
 
 *Expected outcome:* agent states "checking calendar for morning slots this week" → finds a free slot → proposes it. OR describes the lookup it would make.
 
-**Technique 4 — Chaining (15 min):**
+**Technique 4 — Chaining (13 min):**
 Build 3 separate prompts. Wire them in sequence (3 AI nodes in n8n, or run manually one after the other).
 
 *Expected outcome:* Prompt 1 outputs clean JSON extraction. Prompt 2 outputs decision + missing_info. Prompt 3 outputs a draft reply. Each step is inspectable separately.
@@ -1078,26 +1080,26 @@ Same email, 4 outputs. Ask:
 
 ---
 
-## Recap (3:45–4:00)
+## Recap (2:55–3:00)
 
 Round: which of the 4 techniques will you reach for first on your own work, and why?
 
 ---
 ---
 
-# DAY 2 — MORNING (2h) — Test & Break
+# DAY 2 — MORNING (1.5h) — Test & Break
 
 > **Shape of the morning:** first you check your prompt against inputs it *should* handle. Then you attack it with inputs designed to make it fail. Everything you find this morning becomes the reason for a guardrail this evening.
 
 ---
 
-## Recap + pair swap (4:00–4:10)
+## Recap + pair swap (3:00–3:05)
 
-### Recap (5 min)
+### Recap (2 min)
 
 One sentence per pair: which of the four techniques did you end Day 1 with, and why?
 
-### Pair swap (5 min) — say this to the room
+### Pair swap (3 min) — say this to the room
 
 "Swap prompts with another pair. For the rest of today you are testing **their** prompt, not yours."
 
@@ -1107,9 +1109,9 @@ Each pair now holds: another pair's system prompt, and a blank recording sheet (
 
 ---
 
-## Hands-on 3: Test with different inputs (4:10–4:55)
+## Hands-on 3: Test with different inputs (3:05–3:35)
 
-> Three inputs, ~15 min each. This is the "does it work" pass. The "can I make it fail" pass comes next.
+> Two inputs, ~15 min each. This is the "does it work" pass. The "can I make it fail" pass comes next. The "Ambiguous" input (Chris — "that thing from last week") is cut from live time; hand it out as an optional take-home input, or swap it in for "Gap" if a pair finishes early.
 
 ### Input 1 — Clean (15 min)
 
@@ -1137,7 +1139,7 @@ client presentation on Friday. — Marcus"
 
 ---
 
-### Input 2 — Ambiguous (15 min)
+### Input 2 — Ambiguous (optional / take-home, not run live)
 
 ```
 "Hey, can someone meet about that thing from last week?
@@ -1166,7 +1168,7 @@ Doesn't have to be long. — Chris"
 
 ---
 
-### Input 3 — Gap (15 min)
+### Input 3 — Gap (15 min, run live)
 
 ```
 "Urgent: the production system is down. Can we get everyone on a
@@ -1212,7 +1214,7 @@ call RIGHT NOW? It's 11pm here but this can't wait until morning.
 
 ---
 
-## Trainer break demo (4:55–5:05)
+## Trainer break demo (3:35–3:40)
 
 > Do this on the projector, before the room is asked to break anything. They need to see what a break looks like before being asked to produce one. This is the same move as Day 1's "delete the rule" demo — the room already knows the shape.
 
@@ -1234,11 +1236,11 @@ A break is not "the model was stupid." A break is one of:
 
 ---
 
-## Hands-on 4: Break it — 5 attack cards (5:05–5:45)
+## Hands-on 4: Break it — 5 attack cards (3:40–4:15)
 
 ### Setup (say to room)
 
-"You are holding another pair's prompt. Here are five attack cards. You do **not** have to invent attacks — they're written for you. Run each one against the prompt you're holding, fill in the sheet, and write down what actually came back."
+"You are holding another pair's prompt. Here are five attack cards. You do **not** have to invent attacks — they're written for you. Run each one against the prompt you're holding, fill in the sheet, and write down what actually came back. Move fast — roughly 6–7 minutes per card."
 
 > **Presenter note — this is the important instruction.** Do not ask the room to "find weaknesses." At this stage they don't yet know what an attack surface looks like, and open-ended red-teaming produces silence. Hand them the inputs. The skill being taught here is *observing and naming the failure*, not inventing the attack. They invent attacks on Day 3, once they've seen five.
 
@@ -1361,7 +1363,7 @@ That third question is the one that converts a non-break into the argument for g
 
 ---
 
-## Report-back + recap (5:45–6:00)
+## Report-back + recap (4:15–4:30)
 
 Each pair, 60 seconds:
 - which card landed hardest against the prompt you were holding
@@ -1372,13 +1374,13 @@ Write the failures up on the board as they're called out. **Leave them up — th
 ---
 ---
 
-# DAY 2 — EVENING (2h) — Guardrails
+# DAY 2 — EVENING (1.5h) — Guardrails
 
 > **Shape of the evening:** the board is covered in failures from this morning. Every guardrail in this session exists to close one of them. Then you re-run the same five cards and prove it.
 
 ---
 
-## Block 7: Why guardrails matter (6:00–6:20)
+## Block 7: Why guardrails matter (4:30–4:45)
 
 ### Start from their own board
 
@@ -1398,7 +1400,7 @@ Answer: none of them. Work through the five reasons.
 
 > **Say:** "A guardrail isn't there because the model is weak. It's there because *right by luck* and *right by rule* look exactly the same until the day they don't."
 
-### Common mistakes recap (fold in here — 5 min)
+### Common mistakes recap (fold in here — 3 min)
 
 | Mistake | Meeting Email example |
 |---|---|
@@ -1409,9 +1411,9 @@ Answer: none of them. Work through the five reasons.
 
 ---
 
-## Block 8: Guardrails demo — before / after (6:20–6:35)
+## Block 8: Guardrails demo — before / after (4:45–4:55)
 
-> Trainer-led, on the projector. Same structure as Day 1's "delete the rule" moment, run in reverse: this time you *add* the rule and watch the failure disappear.
+> Trainer-led, on the projector. Same structure as Day 1's "delete the rule" moment, run in reverse: this time you *add* the rule and watch the failure disappear. Only 2 demos fit the compressed slot — Demo 3 ("hold the line") is cut from the live session; mention its point in one sentence instead (guardrails constrain invention, not judgement) or fold it into Hands-on 6 if a pair has time.
 
 ### Demo 1 — Card 1 (out-of-scope), 5 min
 
@@ -1429,17 +1431,13 @@ Answer: none of them. Work through the five reasons.
 2. Add the never-infer rule (Guardrail 4).
 3. Re-run → `urgency: medium`, `proposed_time: null`, and the missing slot flagged in `missing_info`. **Fixed.**
 
-### Demo 3 — hold the line, 5 min
-
-Run Demo 2's fixed prompt against the Priya 11pm email. Show that the guardrail didn't make the system rigid — it still escalates rather than flatly refusing. Guardrails constrain *invention*, not *judgement*.
-
 ---
 
-## Hands-on 5: Add the guardrails (6:35–7:20)
+## Hands-on 5: Add the guardrails (4:55–5:25)
 
 ### Setup
 
-"Take **your own** prompt back from the pair that tested it, along with their filled-in sheet. You now know exactly what failed. Add these five guardrails."
+"Take **your own** prompt back from the pair that tested it, along with their filled-in sheet. You now know exactly what failed. Add these five guardrails. **Time is tight — Guardrail 2 and Guardrail 5 are close to copy-paste; spend your writing time on Guardrail 1, 3, and 4, which need to match your own rules and schema.**"
 
 ---
 
@@ -1527,33 +1525,38 @@ Add all five. Then re-read your prompt and ask the question from this morning's 
 
 ---
 
-## Hands-on 6: Re-run the attack cards (7:20–7:45)
+## Hands-on 6: Re-run the attack cards (5:25–5:40)
 
-Swap back to the pair who tested you. Run **the same five cards** against the guarded prompt. Same sheet, one new column.
+Swap back to the pair who tested you. Run **Cards 1, 2, and 3** against the guarded prompt — these three map directly to Guardrails 1, 4, and 3, and are the fastest to verify live. Same sheet, one new column.
 
 | Card | Held before? | Holds now? | If it still fails, why |
 |---|---|---|---|
 | 1 — Out-of-scope | | | |
 | 2 — Helpfulness drift | | | |
 | 3 — Rule collision | | | |
+
+**Cut from live time — set as take-home / optional if a pair finishes early:**
+
+| Card | Held before? | Holds now? | If it still fails, why |
+|---|---|---|---|
 | 4 — Embedded instruction | | | |
 | 5 — Non-determinism (×5 runs) | | | |
 
-**Card 5 must still be run five times.** A single clean run is not a pass — that's the whole lesson of the morning.
+**If Card 5 is run, it must still be run five times.** A single clean run is not a pass — that's the whole lesson of the morning.
 
-> **Presenter note:** expect Card 5 to be the one that still wobbles for some pairs. That's honest and worth saying out loud: guardrails narrow the range of answers, they don't make a language model deterministic. Where you need a hard guarantee, that's a validation step in code outside the prompt — which is where Day 3 picks up.
+> **Presenter note:** if a pair gets to Card 5, expect it to be the one that still wobbles. That's honest and worth saying out loud: guardrails narrow the range of answers, they don't make a language model deterministic. Where you need a hard guarantee, that's a validation step in code outside the prompt — which is where Day 3 picks up.
 
 ---
 
-## Showcase + final recap + close (7:45–8:00)
+## Showcase + final recap + close (5:40–6:00)
 
 ### Showcase (10 min)
 
-2–3 pairs, 3 minutes each. Show one card: the input, the output **before** the guardrail, the guardrail line they added, the output **after**.
+2 pairs, 4–5 minutes each. Show one card: the input, the output **before** the guardrail, the guardrail line they added, the output **after**.
 
 A card that still fails is worth showing. Say so before you ask for volunteers.
 
-### Final recap (5 min)
+### Final recap (10 min)
 
 Three questions:
 1. What's the one habit from these two days you'll actually use next week?
