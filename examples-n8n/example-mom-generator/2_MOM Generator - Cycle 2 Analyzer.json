@@ -1,5 +1,5 @@
 {
-  "name": "MOM Actioner - Cycle 2 First Action Item",
+  "name": "MOM Generator - Cycle 2 Analyzer",
   "nodes": [
     {
       "parameters": {
@@ -8,7 +8,7 @@
       "type": "@n8n/n8n-nodes-langchain.chatTrigger",
       "typeVersion": 1.3,
       "position": [
-        -660,
+        -880,
         -40
       ],
       "id": "a2000000-0000-4000-8000-000000000201",
@@ -30,7 +30,7 @@
       "type": "n8n-nodes-base.gmailTrigger",
       "typeVersion": 1.2,
       "position": [
-        -660,
+        -880,
         180
       ],
       "id": "a2000000-0000-4000-8000-000000000202",
@@ -58,11 +58,33 @@
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.5,
       "position": [
-        -400,
+        -620,
         60
       ],
       "id": "a2000000-0000-4000-8000-000000000203",
-      "name": "MOM Actioner"
+      "name": "MOM Generator"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.text }}",
+        "messages": {
+          "messageValues": [
+            {
+              "type": "SystemMessagePromptTemplate",
+              "message": "You sort meeting action items by what actually needs to happen to them.\n\nYou receive a JSON array of action items. Return the SAME array, with two fields added to every element:\n\n{\n  \"action\": string,\n  \"owner\": string | null,\n  \"due_date\": string | null,\n  \"category\": \"calendar\" | \"ticket\" | \"manual\",\n  \"reason\": string\n}\n\nHow to choose the category:\n- \"calendar\" - the item needs time blocked with other people: a meeting, a review, a walkthrough, a decision that has to be made together. Someone else has to be in the room.\n- \"ticket\" - the item is work one person goes away and does on their own: drafting a document, sizing an estimate, investigating a tool, supplying a file. It belongs in a backlog, not in a calendar.\n- \"manual\" - nobody can act on it yet, because there is no named owner or no real due date. A human has to decide first.\n\nRules:\n- Every element keeps its original action, owner and due_date, copied exactly. Change nothing.\n- \"manual\" wins: if owner is null or due_date is null, the category is \"manual\", whatever the text of the action says.\n- reason is one short sentence saying why you chose that category. No more.\n- Return ONLY the JSON array. No prose, no markdown fences."
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        -360,
+        60
+      ],
+      "id": "a2000000-0000-4000-8000-000000000204",
+      "name": "Analyzer"
     },
     {
       "parameters": {
@@ -72,58 +94,15 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
       "position": [
-        -400,
-        280
+        -500,
+        300
       ],
-      "id": "a2000000-0000-4000-8000-000000000204",
+      "id": "a2000000-0000-4000-8000-000000000205",
       "name": "Google Gemini Chat Model",
       "credentials": {
         "googlePalmApi": {
           "id": "MJmu5iG6bJB5dd48",
           "name": "Google Gemini(PaLM) Api account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "const raw = $input.first().json.text ?? $input.first().json.output ?? '';\n\nlet items;\ntry {\n  items = JSON.parse(String(raw).replace(/```json\\n?|```/g, '').trim());\n} catch (e) {\n  items = [];\n}\nif (!Array.isArray(items)) items = [];\n\n// Cycle 2 deliberately handles only the FIRST action item. Cycle 4 handles all of them.\nconst first = items[0];\nif (!first) return [];\n\nconst date = first.due_date;\n\nreturn [{\n  json: {\n    action: first.action,\n    owner: first.owner,\n    due_date: date,\n    event_start: date ? date + 'T09:00:00+02:00' : null,\n    event_end: date ? date + 'T09:30:00+02:00' : null,\n    total_items_found: items.length\n  }\n}];"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -140,
-        60
-      ],
-      "id": "a2000000-0000-4000-8000-000000000205",
-      "name": "Take the first action item"
-    },
-    {
-      "parameters": {
-        "calendar": {
-          "__rl": true,
-          "value": "sahil.renapurkar.official@gmail.com",
-          "mode": "list",
-          "cachedResultName": "sahil.renapurkar.official@gmail.com"
-        },
-        "start": "={{ $json.event_start }}",
-        "end": "={{ $json.event_end }}",
-        "additionalFields": {
-          "summary": "={{ $json.action }}",
-          "description": "=Owner: {{ $json.owner }}\nDue: {{ $json.due_date }}\n\nCreated automatically from the meeting minutes."
-        }
-      },
-      "type": "n8n-nodes-base.googleCalendar",
-      "typeVersion": 1.3,
-      "position": [
-        100,
-        60
-      ],
-      "id": "a2000000-0000-4000-8000-000000000206",
-      "name": "Create calendar invite",
-      "credentials": {
-        "googleCalendarOAuth2Api": {
-          "id": "pJgtB7CgBPqNtlvy",
-          "name": "Google Calendar account"
         }
       }
     }
@@ -134,7 +113,7 @@
       "main": [
         [
           {
-            "node": "MOM Actioner",
+            "node": "MOM Generator",
             "type": "main",
             "index": 0
           }
@@ -145,7 +124,7 @@
       "main": [
         [
           {
-            "node": "MOM Actioner",
+            "node": "MOM Generator",
             "type": "main",
             "index": 0
           }
@@ -156,29 +135,23 @@
       "ai_languageModel": [
         [
           {
-            "node": "MOM Actioner",
+            "node": "MOM Generator",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Analyzer",
             "type": "ai_languageModel",
             "index": 0
           }
         ]
       ]
     },
-    "MOM Actioner": {
+    "MOM Generator": {
       "main": [
         [
           {
-            "node": "Take the first action item",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Take the first action item": {
-      "main": [
-        [
-          {
-            "node": "Create calendar invite",
+            "node": "Analyzer",
             "type": "main",
             "index": 0
           }

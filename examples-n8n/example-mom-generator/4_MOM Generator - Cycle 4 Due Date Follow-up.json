@@ -1,0 +1,328 @@
+{
+  "name": "MOM Generator - Cycle 4 Due Date Follow-up",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -880,
+        -40
+      ],
+      "id": "a4000000-0000-4000-8000-000000000401",
+      "name": "Chat message arrives",
+      "webhookId": "b1a2c3d4-4444-4aaa-9bbb-000000000401"
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -880,
+        180
+      ],
+      "id": "a4000000-0000-4000-8000-000000000402",
+      "name": "Email arrives",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "AFlBJZWMdmAPyHw7",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput || $json.text || $json.snippet }}",
+        "messages": {
+          "messageValues": [
+            {
+              "type": "SystemMessagePromptTemplate",
+              "message": "You extract action items from meeting minutes.\n\nReturn ONLY a JSON array. No prose, no markdown fences.\n\nEach element:\n{\n  \"action\": string,\n  \"owner\": string | null,\n  \"due_date\": string | null\n}\n\nRules:\n- owner is null when the notes say Unassigned, TBD, or leave it blank.\n- due_date is an ISO date (YYYY-MM-DD) only when the notes give a real calendar date. If the notes say something vague like \"Next review\" or \"Week of ...\", set it to null.\n- Never invent an owner or a date. Copy the action text as written.\n- If there are no action items at all, return []."
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        -620,
+        60
+      ],
+      "id": "a4000000-0000-4000-8000-000000000403",
+      "name": "MOM Generator"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.text }}",
+        "messages": {
+          "messageValues": [
+            {
+              "type": "SystemMessagePromptTemplate",
+              "message": "You sort meeting action items by what actually needs to happen to them.\n\nYou receive a JSON array of action items. Return the SAME array, with two fields added to every element:\n\n{\n  \"action\": string,\n  \"owner\": string | null,\n  \"due_date\": string | null,\n  \"category\": \"calendar\" | \"ticket\" | \"manual\",\n  \"reason\": string\n}\n\nHow to choose the category:\n- \"calendar\" - the item needs time blocked with other people: a meeting, a review, a walkthrough, a decision that has to be made together. Someone else has to be in the room.\n- \"ticket\" - the item is work one person goes away and does on their own: drafting a document, sizing an estimate, investigating a tool, supplying a file. It belongs in a backlog, not in a calendar.\n- \"manual\" - nobody can act on it yet, because there is no named owner or no real due date. A human has to decide first.\n\nRules:\n- Every element keeps its original action, owner and due_date, copied exactly. Change nothing.\n- \"manual\" wins: if owner is null or due_date is null, the category is \"manual\", whatever the text of the action says.\n- reason is one short sentence saying why you chose that category. No more.\n- Return ONLY the JSON array. No prose, no markdown fences."
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        -360,
+        60
+      ],
+      "id": "a4000000-0000-4000-8000-000000000404",
+      "name": "Analyzer"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -500,
+        300
+      ],
+      "id": "a4000000-0000-4000-8000-000000000405",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "MJmu5iG6bJB5dd48",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.text ?? '';\n\nlet items;\ntry {\n  items = JSON.parse(String(raw).replace(/```json\\n?|```/g, '').trim());\n} catch (e) {\n  items = [];\n}\nif (!Array.isArray(items)) items = [];\n\nconst calendarItems = items.filter(i => i.category === 'calendar');\n\nconst first = calendarItems[0];\nif (!first) return [];\n\nconst date = first.due_date;\n\nreturn [{\n  json: {\n    action: first.action,\n    owner: first.owner,\n    due_date: date,\n    category: first.category,\n    reason: first.reason,\n    event_start: date ? date + 'T09:00:00+02:00' : null,\n    event_end: date ? date + 'T09:30:00+02:00' : null\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        60
+      ],
+      "id": "a4000000-0000-4000-8000-000000000406",
+      "name": "Take the first calendar item"
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "sahil.renapurkar.official@gmail.com",
+          "mode": "list",
+          "cachedResultName": "sahil.renapurkar.official@gmail.com"
+        },
+        "start": "={{ $json.event_start }}",
+        "end": "={{ $json.event_end }}",
+        "additionalFields": {
+          "summary": "={{ $json.action }}",
+          "description": "=Owner: {{ $json.owner }}\nDue: {{ $json.due_date }}\nWhy this needs a meeting: {{ $json.reason }}\n\nCreated automatically from the meeting minutes."
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        140,
+        60
+      ],
+      "id": "a4000000-0000-4000-8000-000000000407",
+      "name": "Create calendar invite",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "pJgtB7CgBPqNtlvy",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -880,
+        480
+      ],
+      "id": "a4000000-0000-4000-8000-000000000408",
+      "name": "Every morning at 08:00"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "sahil.renapurkar.official@gmail.com",
+          "mode": "list",
+          "cachedResultName": "sahil.renapurkar.official@gmail.com"
+        },
+        "returnAll": true,
+        "options": {
+          "timeMin": "={{ $now.toISO() }}",
+          "timeMax": "={{ $now.plus({ days: 2 }).toISO() }}",
+          "singleEvents": true
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        -620,
+        480
+      ],
+      "id": "a4000000-0000-4000-8000-000000000409",
+      "name": "Action items due in the next 2 days",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "pJgtB7CgBPqNtlvy",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "sahil.renapurkar.official@gmail.com",
+        "subject": "=Reminder: \"{{ $json.summary }}\" is due soon",
+        "emailType": "text",
+        "message": "=This action item from the meeting minutes is due soon.\n\nAction: {{ $json.summary }}\nDue:    {{ $json.start?.dateTime || $json.start?.date }}\n\n{{ $json.description }}\n\nReply to this email if it is already done, or if the date needs to move.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -360,
+        480
+      ],
+      "id": "a4000000-0000-4000-8000-000000000410",
+      "name": "Send follow-up reminder",
+      "webhookId": "c1a2c3d4-4444-4bbb-9ccc-000000000410",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "AFlBJZWMdmAPyHw7",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Chat message arrives": {
+      "main": [
+        [
+          {
+            "node": "MOM Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email arrives": {
+      "main": [
+        [
+          {
+            "node": "MOM Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "MOM Generator",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Analyzer",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MOM Generator": {
+      "main": [
+        [
+          {
+            "node": "Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyzer": {
+      "main": [
+        [
+          {
+            "node": "Take the first calendar item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Take the first calendar item": {
+      "main": [
+        [
+          {
+            "node": "Create calendar invite",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every morning at 08:00": {
+      "main": [
+        [
+          {
+            "node": "Action items due in the next 2 days",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Action items due in the next 2 days": {
+      "main": [
+        [
+          {
+            "node": "Send follow-up reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}

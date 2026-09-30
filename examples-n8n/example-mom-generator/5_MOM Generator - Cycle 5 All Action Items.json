@@ -1,5 +1,5 @@
 {
-  "name": "MOM Actioner - Cycle 4 All Action Items",
+  "name": "MOM Generator - Cycle 4 All Action Items",
   "nodes": [
     {
       "parameters": {
@@ -62,7 +62,7 @@
         60
       ],
       "id": "a4000000-0000-4000-8000-000000000403",
-      "name": "MOM Actioner"
+      "name": "MOM Generator"
     },
     {
       "parameters": {
@@ -324,7 +324,7 @@
       "main": [
         [
           {
-            "node": "MOM Actioner",
+            "node": "MOM Generator",
             "type": "main",
             "index": 0
           }
@@ -335,7 +335,7 @@
       "main": [
         [
           {
-            "node": "MOM Actioner",
+            "node": "MOM Generator",
             "type": "main",
             "index": 0
           }
@@ -346,14 +346,14 @@
       "ai_languageModel": [
         [
           {
-            "node": "MOM Actioner",
+            "node": "MOM Generator",
             "type": "ai_languageModel",
             "index": 0
           }
         ]
       ]
     },
-    "MOM Actioner": {
+    "MOM Generator": {
       "main": [
         [
           {

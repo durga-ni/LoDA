@@ -1,5 +1,5 @@
 {
-  "name": "MOM Actioner - Cycle 1 Trigger",
+  "name": "MOM Generator - Cycle 1 Trigger",
   "nodes": [
     {
       "parameters": {
@@ -62,7 +62,7 @@
         60
       ],
       "id": "a1000000-0000-4000-8000-000000000103",
-      "name": "MOM Actioner"
+      "name": "MOM Generator"
     },
     {
       "parameters": {
@@ -91,7 +91,7 @@
       "main": [
         [
           {
-            "node": "MOM Actioner",
+            "node": "MOM Generator",
             "type": "main",
             "index": 0
           }
@@ -102,7 +102,7 @@
       "main": [
         [
           {
-            "node": "MOM Actioner",
+            "node": "MOM Generator",
             "type": "main",
             "index": 0
           }
@@ -113,7 +113,7 @@
       "ai_languageModel": [
         [
           {
-            "node": "MOM Actioner",
+            "node": "MOM Generator",
             "type": "ai_languageModel",
             "index": 0
           }
