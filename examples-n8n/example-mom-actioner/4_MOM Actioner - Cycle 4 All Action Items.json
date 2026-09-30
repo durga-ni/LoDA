@@ -1,0 +1,442 @@
+{
+  "name": "MOM Actioner - Cycle 4 All Action Items",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -880,
+        -40
+      ],
+      "id": "a4000000-0000-4000-8000-000000000401",
+      "name": "Chat message arrives",
+      "webhookId": "b1a2c3d4-4444-4aaa-9bbb-000000000401"
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -880,
+        180
+      ],
+      "id": "a4000000-0000-4000-8000-000000000402",
+      "name": "Email arrives",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "AFlBJZWMdmAPyHw7",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput || $json.text || $json.snippet }}",
+        "messages": {
+          "messageValues": [
+            {
+              "type": "SystemMessagePromptTemplate",
+              "message": "You extract action items from meeting minutes.\n\nReturn ONLY a JSON array. No prose, no markdown fences.\n\nEach element:\n{\n  \"action\": string,\n  \"owner\": string | null,\n  \"due_date\": string | null\n}\n\nRules:\n- owner is null when the notes say Unassigned, TBD, or leave it blank.\n- due_date is an ISO date (YYYY-MM-DD) only when the notes give a real calendar date. If the notes say something vague like \"Next review\" or \"Week of ...\", set it to null.\n- Never invent an owner or a date. Copy the action text as written.\n- If there are no action items at all, return []."
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        -620,
+        60
+      ],
+      "id": "a4000000-0000-4000-8000-000000000403",
+      "name": "MOM Actioner"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -620,
+        280
+      ],
+      "id": "a4000000-0000-4000-8000-000000000404",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "MJmu5iG6bJB5dd48",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.text ?? $input.first().json.output ?? '';\n\nlet items;\ntry {\n  items = JSON.parse(String(raw).replace(/```json\\n?|```/g, '').trim());\n} catch (e) {\n  items = [];\n}\nif (!Array.isArray(items)) items = [];\n\n// The empty case still has to travel down the workflow, so it gets one item of its own.\nif (items.length === 0) {\n  return [{ json: { no_action_items: true } }];\n}\n\n// One n8n item per action item - this is what makes the rest of the workflow run once each.\nreturn items.map(i => {\n  const date = i.due_date;\n  return {\n    json: {\n      no_action_items: false,\n      action: i.action,\n      owner: i.owner,\n      due_date: date,\n      event_start: date ? date + 'T09:00:00+02:00' : null,\n      event_end: date ? date + 'T09:30:00+02:00' : null\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -380,
+        60
+      ],
+      "id": "a4000000-0000-4000-8000-000000000405",
+      "name": "Parse all action items"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d4000000-0000-4000-8000-000000000001",
+              "leftValue": "={{ $json.no_action_items }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -140,
+        60
+      ],
+      "id": "a4000000-0000-4000-8000-000000000406",
+      "name": "Any action items?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d4000000-0000-4000-8000-000000000002",
+              "leftValue": "={{ $json.owner !== null && $json.event_start !== null }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        100,
+        -60
+      ],
+      "id": "a4000000-0000-4000-8000-000000000407",
+      "name": "Owner and due date present?"
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "sahil.renapurkar.official@gmail.com",
+          "mode": "list",
+          "cachedResultName": "sahil.renapurkar.official@gmail.com"
+        },
+        "start": "={{ $json.event_start }}",
+        "end": "={{ $json.event_end }}",
+        "additionalFields": {
+          "summary": "={{ $json.action }}",
+          "description": "=Owner: {{ $json.owner }}\nDue: {{ $json.due_date }}\n\nCreated automatically from the meeting minutes."
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        340,
+        -160
+      ],
+      "id": "a4000000-0000-4000-8000-000000000408",
+      "name": "Create calendar invite",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "pJgtB7CgBPqNtlvy",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "sahil.renapurkar.official@gmail.com",
+        "subject": "Action item needs a follow-up by hand",
+        "emailType": "text",
+        "message": "=This action item could not be scheduled automatically, because the notes did not give both an owner and a real due date.\n\nAction: {{ $json.action }}\nOwner:  {{ $json.owner || 'not stated in the notes' }}\nDue:    {{ $json.due_date || 'not stated in the notes' }}\n\nNothing was invented and nothing was dropped - please assign it manually.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        340,
+        40
+      ],
+      "id": "a4000000-0000-4000-8000-000000000409",
+      "name": "Flag for manual follow-up",
+      "webhookId": "c1a2c3d4-4444-4bbb-9ccc-000000000409",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "AFlBJZWMdmAPyHw7",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "sahil.renapurkar.official@gmail.com",
+        "subject": "No action items found in these meeting minutes",
+        "emailType": "text",
+        "message": "The meeting minutes were processed, but no action items were found. No calendar invites were created.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        100,
+        200
+      ],
+      "id": "a4000000-0000-4000-8000-000000000410",
+      "name": "Report nothing to do",
+      "webhookId": "c1a2c3d4-4444-4ddd-9eee-000000000410",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "AFlBJZWMdmAPyHw7",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -880,
+        480
+      ],
+      "id": "a4000000-0000-4000-8000-000000000411",
+      "name": "Every morning at 08:00"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "sahil.renapurkar.official@gmail.com",
+          "mode": "list",
+          "cachedResultName": "sahil.renapurkar.official@gmail.com"
+        },
+        "returnAll": true,
+        "options": {
+          "timeMin": "={{ $now.toISO() }}",
+          "timeMax": "={{ $now.plus({ days: 2 }).toISO() }}",
+          "singleEvents": true
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        -620,
+        480
+      ],
+      "id": "a4000000-0000-4000-8000-000000000412",
+      "name": "Action items due in the next 2 days",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "pJgtB7CgBPqNtlvy",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "sahil.renapurkar.official@gmail.com",
+        "subject": "=Reminder: \"{{ $json.summary }}\" is due soon",
+        "emailType": "text",
+        "message": "=This action item from the meeting minutes is due soon.\n\nAction: {{ $json.summary }}\nDue:    {{ $json.start?.dateTime || $json.start?.date }}\n\n{{ $json.description }}\n\nReply to this email if it is already done, or if the date needs to move.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -380,
+        480
+      ],
+      "id": "a4000000-0000-4000-8000-000000000413",
+      "name": "Send follow-up reminder",
+      "webhookId": "c1a2c3d4-4444-4fff-9aaa-000000000413",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "AFlBJZWMdmAPyHw7",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Chat message arrives": {
+      "main": [
+        [
+          {
+            "node": "MOM Actioner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email arrives": {
+      "main": [
+        [
+          {
+            "node": "MOM Actioner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "MOM Actioner",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MOM Actioner": {
+      "main": [
+        [
+          {
+            "node": "Parse all action items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse all action items": {
+      "main": [
+        [
+          {
+            "node": "Any action items?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any action items?": {
+      "main": [
+        [
+          {
+            "node": "Owner and due date present?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Report nothing to do",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Owner and due date present?": {
+      "main": [
+        [
+          {
+            "node": "Create calendar invite",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Flag for manual follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every morning at 08:00": {
+      "main": [
+        [
+          {
+            "node": "Action items due in the next 2 days",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Action items due in the next 2 days": {
+      "main": [
+        [
+          {
+            "node": "Send follow-up reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}

@@ -1,0 +1,194 @@
+{
+  "name": "MOM Actioner - Cycle 2 First Action Item",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -660,
+        -40
+      ],
+      "id": "a2000000-0000-4000-8000-000000000201",
+      "name": "Chat message arrives",
+      "webhookId": "b1a2c3d4-2222-4aaa-9bbb-000000000201"
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -660,
+        180
+      ],
+      "id": "a2000000-0000-4000-8000-000000000202",
+      "name": "Email arrives",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "AFlBJZWMdmAPyHw7",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput || $json.text || $json.snippet }}",
+        "messages": {
+          "messageValues": [
+            {
+              "type": "SystemMessagePromptTemplate",
+              "message": "You extract action items from meeting minutes.\n\nReturn ONLY a JSON array. No prose, no markdown fences.\n\nEach element:\n{\n  \"action\": string,\n  \"owner\": string | null,\n  \"due_date\": string | null\n}\n\nRules:\n- owner is null when the notes say Unassigned, TBD, or leave it blank.\n- due_date is an ISO date (YYYY-MM-DD) only when the notes give a real calendar date. If the notes say something vague like \"Next review\" or \"Week of ...\", set it to null.\n- Never invent an owner or a date. Copy the action text as written.\n- If there are no action items at all, return []."
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        -400,
+        60
+      ],
+      "id": "a2000000-0000-4000-8000-000000000203",
+      "name": "MOM Actioner"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        280
+      ],
+      "id": "a2000000-0000-4000-8000-000000000204",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "MJmu5iG6bJB5dd48",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.text ?? $input.first().json.output ?? '';\n\nlet items;\ntry {\n  items = JSON.parse(String(raw).replace(/```json\\n?|```/g, '').trim());\n} catch (e) {\n  items = [];\n}\nif (!Array.isArray(items)) items = [];\n\n// Cycle 2 deliberately handles only the FIRST action item. Cycle 4 handles all of them.\nconst first = items[0];\nif (!first) return [];\n\nconst date = first.due_date;\n\nreturn [{\n  json: {\n    action: first.action,\n    owner: first.owner,\n    due_date: date,\n    event_start: date ? date + 'T09:00:00+02:00' : null,\n    event_end: date ? date + 'T09:30:00+02:00' : null,\n    total_items_found: items.length\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -140,
+        60
+      ],
+      "id": "a2000000-0000-4000-8000-000000000205",
+      "name": "Take the first action item"
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "sahil.renapurkar.official@gmail.com",
+          "mode": "list",
+          "cachedResultName": "sahil.renapurkar.official@gmail.com"
+        },
+        "start": "={{ $json.event_start }}",
+        "end": "={{ $json.event_end }}",
+        "additionalFields": {
+          "summary": "={{ $json.action }}",
+          "description": "=Owner: {{ $json.owner }}\nDue: {{ $json.due_date }}\n\nCreated automatically from the meeting minutes."
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        100,
+        60
+      ],
+      "id": "a2000000-0000-4000-8000-000000000206",
+      "name": "Create calendar invite",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "pJgtB7CgBPqNtlvy",
+          "name": "Google Calendar account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Chat message arrives": {
+      "main": [
+        [
+          {
+            "node": "MOM Actioner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email arrives": {
+      "main": [
+        [
+          {
+            "node": "MOM Actioner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "MOM Actioner",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MOM Actioner": {
+      "main": [
+        [
+          {
+            "node": "Take the first action item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Take the first action item": {
+      "main": [
+        [
+          {
+            "node": "Create calendar invite",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}
