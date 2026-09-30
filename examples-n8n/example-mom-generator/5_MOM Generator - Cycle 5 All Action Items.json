@@ -1,5 +1,5 @@
 {
-  "name": "MOM Generator - Cycle 4 All Action Items",
+  "name": "MOM Generator - Cycle 5 All Action Items",
   "nodes": [
     {
       "parameters": {
@@ -8,12 +8,12 @@
       "type": "@n8n/n8n-nodes-langchain.chatTrigger",
       "typeVersion": 1.3,
       "position": [
-        -880,
+        -1100,
         -40
       ],
-      "id": "a4000000-0000-4000-8000-000000000401",
+      "id": "a5000000-0000-4000-8000-000000000501",
       "name": "Chat message arrives",
-      "webhookId": "b1a2c3d4-4444-4aaa-9bbb-000000000401"
+      "webhookId": "b1a2c3d4-5555-4aaa-9bbb-000000000501"
     },
     {
       "parameters": {
@@ -30,10 +30,10 @@
       "type": "n8n-nodes-base.gmailTrigger",
       "typeVersion": 1.2,
       "position": [
-        -880,
+        -1100,
         180
       ],
-      "id": "a4000000-0000-4000-8000-000000000402",
+      "id": "a5000000-0000-4000-8000-000000000502",
       "name": "Email arrives",
       "credentials": {
         "gmailOAuth2": {
@@ -58,11 +58,33 @@
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.5,
       "position": [
-        -620,
+        -840,
         60
       ],
-      "id": "a4000000-0000-4000-8000-000000000403",
+      "id": "a5000000-0000-4000-8000-000000000503",
       "name": "MOM Generator"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.text }}",
+        "messages": {
+          "messageValues": [
+            {
+              "type": "SystemMessagePromptTemplate",
+              "message": "You sort meeting action items by what actually needs to happen to them.\n\nYou receive a JSON array of action items. Return the SAME array, with two fields added to every element:\n\n{\n  \"action\": string,\n  \"owner\": string | null,\n  \"due_date\": string | null,\n  \"category\": \"calendar\" | \"ticket\" | \"manual\",\n  \"reason\": string\n}\n\nHow to choose the category:\n- \"calendar\" - the item needs time blocked with other people: a meeting, a review, a walkthrough, a decision that has to be made together. Someone else has to be in the room.\n- \"ticket\" - the item is work one person goes away and does on their own: drafting a document, sizing an estimate, investigating a tool, supplying a file. It belongs in a backlog, not in a calendar.\n- \"manual\" - nobody can act on it yet, because there is no named owner or no real due date. A human has to decide first.\n\nRules:\n- Every element keeps its original action, owner and due_date, copied exactly. Change nothing.\n- \"manual\" wins: if owner is null or due_date is null, the category is \"manual\", whatever the text of the action says.\n- reason is one short sentence saying why you chose that category. No more.\n- Return ONLY the JSON array. No prose, no markdown fences."
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        -580,
+        60
+      ],
+      "id": "a5000000-0000-4000-8000-000000000504",
+      "name": "Analyzer"
     },
     {
       "parameters": {
@@ -72,10 +94,10 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
       "position": [
-        -620,
-        280
+        -720,
+        300
       ],
-      "id": "a4000000-0000-4000-8000-000000000404",
+      "id": "a5000000-0000-4000-8000-000000000505",
       "name": "Google Gemini Chat Model",
       "credentials": {
         "googlePalmApi": {
@@ -86,16 +108,16 @@
     },
     {
       "parameters": {
-        "jsCode": "const raw = $input.first().json.text ?? $input.first().json.output ?? '';\n\nlet items;\ntry {\n  items = JSON.parse(String(raw).replace(/```json\\n?|```/g, '').trim());\n} catch (e) {\n  items = [];\n}\nif (!Array.isArray(items)) items = [];\n\n// The empty case still has to travel down the workflow, so it gets one item of its own.\nif (items.length === 0) {\n  return [{ json: { no_action_items: true } }];\n}\n\n// One n8n item per action item - this is what makes the rest of the workflow run once each.\nreturn items.map(i => {\n  const date = i.due_date;\n  return {\n    json: {\n      no_action_items: false,\n      action: i.action,\n      owner: i.owner,\n      due_date: date,\n      event_start: date ? date + 'T09:00:00+02:00' : null,\n      event_end: date ? date + 'T09:30:00+02:00' : null\n    }\n  };\n});"
+        "jsCode": "const raw = $input.first().json.text ?? '';\n\nlet items;\ntry {\n  items = JSON.parse(String(raw).replace(/```json\\n?|```/g, '').trim());\n} catch (e) {\n  items = [];\n}\nif (!Array.isArray(items)) items = [];\n\n// The empty case still has to travel down the workflow, so it gets one item of its own.\nif (items.length === 0) {\n  return [{ json: { no_action_items: true } }];\n}\n\n// One n8n item per action item - everything downstream then runs once per item automatically.\nreturn items.map(i => {\n  const date = i.due_date;\n  return {\n    json: {\n      no_action_items: false,\n      action: i.action,\n      owner: i.owner,\n      due_date: date,\n      category: i.category,\n      reason: i.reason,\n      event_start: date ? date + 'T09:00:00+02:00' : null,\n      event_end: date ? date + 'T09:30:00+02:00' : null\n    }\n  };\n});"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -380,
+        -340,
         60
       ],
-      "id": "a4000000-0000-4000-8000-000000000405",
-      "name": "Parse all action items"
+      "id": "a5000000-0000-4000-8000-000000000506",
+      "name": "Fan out action items"
     },
     {
       "parameters": {
@@ -108,7 +130,7 @@
           },
           "conditions": [
             {
-              "id": "d4000000-0000-4000-8000-000000000001",
+              "id": "d5000000-0000-4000-8000-000000000001",
               "leftValue": "={{ $json.no_action_items }}",
               "rightValue": "",
               "operator": {
@@ -125,45 +147,102 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -140,
+        -100,
         60
       ],
-      "id": "a4000000-0000-4000-8000-000000000406",
+      "id": "a5000000-0000-4000-8000-000000000507",
       "name": "Any action items?"
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 2
-          },
-          "conditions": [
+        "rules": {
+          "values": [
             {
-              "id": "d4000000-0000-4000-8000-000000000002",
-              "leftValue": "={{ $json.owner !== null && $json.event_start !== null }}",
-              "rightValue": "",
-              "operator": {
-                "type": "boolean",
-                "operation": "true",
-                "singleValue": true
-              }
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d5000000-0000-4000-8000-000000000002",
+                    "leftValue": "={{ $json.category }}",
+                    "rightValue": "calendar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "calendar"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d5000000-0000-4000-8000-000000000003",
+                    "leftValue": "={{ $json.category }}",
+                    "rightValue": "ticket",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ticket"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d5000000-0000-4000-8000-000000000004",
+                    "leftValue": "={{ $json.category }}",
+                    "rightValue": "manual",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "manual"
             }
-          ],
-          "combinator": "and"
+          ]
         },
-        "options": {}
+        "options": {
+          "fallbackOutput": "extra"
+        }
       },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
       "position": [
-        100,
+        140,
         -60
       ],
-      "id": "a4000000-0000-4000-8000-000000000407",
-      "name": "Owner and due date present?"
+      "id": "a5000000-0000-4000-8000-000000000508",
+      "name": "Which group?"
     },
     {
       "parameters": {
@@ -177,16 +256,16 @@
         "end": "={{ $json.event_end }}",
         "additionalFields": {
           "summary": "={{ $json.action }}",
-          "description": "=Owner: {{ $json.owner }}\nDue: {{ $json.due_date }}\n\nCreated automatically from the meeting minutes."
+          "description": "=Owner: {{ $json.owner }}\nDue: {{ $json.due_date }}\nWhy this needs a meeting: {{ $json.reason }}\n\nCreated automatically from the meeting minutes."
         }
       },
       "type": "n8n-nodes-base.googleCalendar",
       "typeVersion": 1.3,
       "position": [
-        340,
-        -160
+        420,
+        -260
       ],
-      "id": "a4000000-0000-4000-8000-000000000408",
+      "id": "a5000000-0000-4000-8000-000000000509",
       "name": "Create calendar invite",
       "credentials": {
         "googleCalendarOAuth2Api": {
@@ -197,21 +276,64 @@
     },
     {
       "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/REPLACE_WITH_YOUR_SHEET_ID/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Backlog"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Action": "={{ $json.action }}",
+            "Owner": "={{ $json.owner }}",
+            "Due date": "={{ $json.due_date }}",
+            "Why it's a ticket": "={{ $json.reason }}",
+            "Status": "New"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        420,
+        -60
+      ],
+      "id": "a5000000-0000-4000-8000-000000000510",
+      "name": "Add row to Google Sheet backlog",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "gSh3EtBackL0gCred01",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
         "sendTo": "sahil.renapurkar.official@gmail.com",
         "subject": "Action item needs a follow-up by hand",
         "emailType": "text",
-        "message": "=This action item could not be scheduled automatically, because the notes did not give both an owner and a real due date.\n\nAction: {{ $json.action }}\nOwner:  {{ $json.owner || 'not stated in the notes' }}\nDue:    {{ $json.due_date || 'not stated in the notes' }}\n\nNothing was invented and nothing was dropped - please assign it manually.",
+        "message": "=This action item could not be scheduled or filed automatically, because the notes did not give both an owner and a real due date.\n\nAction: {{ $json.action }}\nOwner:  {{ $json.owner || 'not stated in the notes' }}\nDue:    {{ $json.due_date || 'not stated in the notes' }}\nAnalyzer's note: {{ $json.reason }}\n\nNothing was invented and nothing was dropped - please assign it manually.",
         "options": {}
       },
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        340,
-        40
+        420,
+        140
       ],
-      "id": "a4000000-0000-4000-8000-000000000409",
+      "id": "a5000000-0000-4000-8000-000000000511",
       "name": "Flag for manual follow-up",
-      "webhookId": "c1a2c3d4-4444-4bbb-9ccc-000000000409",
+      "webhookId": "c1a2c3d4-5555-4bbb-9ccc-000000000511",
       "credentials": {
         "gmailOAuth2": {
           "id": "AFlBJZWMdmAPyHw7",
@@ -224,18 +346,18 @@
         "sendTo": "sahil.renapurkar.official@gmail.com",
         "subject": "No action items found in these meeting minutes",
         "emailType": "text",
-        "message": "The meeting minutes were processed, but no action items were found. No calendar invites were created.",
+        "message": "The meeting minutes were processed, but no action items were found. No calendar invites were created, no backlog rows were added.",
         "options": {}
       },
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        100,
-        200
+        -100,
+        260
       ],
-      "id": "a4000000-0000-4000-8000-000000000410",
+      "id": "a5000000-0000-4000-8000-000000000512",
       "name": "Report nothing to do",
-      "webhookId": "c1a2c3d4-4444-4ddd-9eee-000000000410",
+      "webhookId": "c1a2c3d4-5555-4ddd-9eee-000000000512",
       "credentials": {
         "gmailOAuth2": {
           "id": "AFlBJZWMdmAPyHw7",
@@ -256,10 +378,10 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        -880,
+        -1100,
         480
       ],
-      "id": "a4000000-0000-4000-8000-000000000411",
+      "id": "a5000000-0000-4000-8000-000000000513",
       "name": "Every morning at 08:00"
     },
     {
@@ -281,10 +403,10 @@
       "type": "n8n-nodes-base.googleCalendar",
       "typeVersion": 1.3,
       "position": [
-        -620,
+        -840,
         480
       ],
-      "id": "a4000000-0000-4000-8000-000000000412",
+      "id": "a5000000-0000-4000-8000-000000000514",
       "name": "Action items due in the next 2 days",
       "credentials": {
         "googleCalendarOAuth2Api": {
@@ -304,12 +426,12 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        -380,
+        -580,
         480
       ],
-      "id": "a4000000-0000-4000-8000-000000000413",
+      "id": "a5000000-0000-4000-8000-000000000515",
       "name": "Send follow-up reminder",
-      "webhookId": "c1a2c3d4-4444-4fff-9aaa-000000000413",
+      "webhookId": "c1a2c3d4-5555-4fff-9aaa-000000000515",
       "credentials": {
         "gmailOAuth2": {
           "id": "AFlBJZWMdmAPyHw7",
@@ -349,6 +471,11 @@
             "node": "MOM Generator",
             "type": "ai_languageModel",
             "index": 0
+          },
+          {
+            "node": "Analyzer",
+            "type": "ai_languageModel",
+            "index": 0
           }
         ]
       ]
@@ -357,14 +484,25 @@
       "main": [
         [
           {
-            "node": "Parse all action items",
+            "node": "Analyzer",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Parse all action items": {
+    "Analyzer": {
+      "main": [
+        [
+          {
+            "node": "Fan out action items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fan out action items": {
       "main": [
         [
           {
@@ -379,7 +517,7 @@
       "main": [
         [
           {
-            "node": "Owner and due date present?",
+            "node": "Which group?",
             "type": "main",
             "index": 0
           }
@@ -393,11 +531,18 @@
         ]
       ]
     },
-    "Owner and due date present?": {
+    "Which group?": {
       "main": [
         [
           {
             "node": "Create calendar invite",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Add row to Google Sheet backlog",
             "type": "main",
             "index": 0
           }

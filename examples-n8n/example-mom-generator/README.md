@@ -11,7 +11,7 @@ Reference solutions for the five build cycles. **Do not hand these out at the st
 3. If they're still stuck at the end of the build slot, import the cycle's JSON and drive it live on the projector — the canvas *is* the visual. Pause on the node they were missing and let them see its settings panel.
 4. The mermaid diagram in each section is the static fallback for slides, if you'd rather not switch to n8n mid-explanation.
 
-**Before the session:** import all five into your own n8n instance, re-point the Gmail / Google Calendar / Gemini / Google Sheets credentials at your accounts, and replace `sahil.renapurkar.official@gmail.com` with your own address in the calendar and email nodes. Run each one once so you know they work in your environment.
+**Before the session:** import all five into your own n8n instance, re-point the Gmail / Google Calendar / Gemini / Google Sheets credentials at your accounts, and replace `sahil.renapurkar.official@gmail.com` with your own address in the calendar and email nodes. In cycle 5's "Add row to Google Sheet backlog" node, replace the placeholder sheet URL (`REPLACE_WITH_YOUR_SHEET_ID`) with a real spreadsheet that has an `Action / Owner / Due date / Why it's a ticket / Status` header row. Run each one once so you know they work in your environment.
 
 ---
 
@@ -124,7 +124,7 @@ graph LR
 
 **Demo checkpoint:** Run with notes that have all three kinds of item — calendar items get invites, ticket items appear as new rows in a shared Google Sheet, manual items get flagged in a message to a person. Run with notes that have none — the workflow ends clean, nothing created, nothing sent.
 
-**File:** `5_MOM Generator - Cycle 5 All Action Items.json` *(being rebuilt for the group routing below — hold off on this one for now)*
+**File:** `5_MOM Generator - Cycle 5 All Action Items.json`
 
 ```mermaid
 graph LR
